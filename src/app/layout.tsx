@@ -21,7 +21,6 @@ export const metadata: Metadata = {
     "Book premium washing, dry cleaning, and express pickups anywhere in Bangalore with Dr Dhobi's doorstep laundry experts.",
   manifest: "/manifest.webmanifest",
   metadataBase: new URL("https://dr-dhobi.example"),
-  themeColor: "#0d3b66",
   applicationName: "Dr Dhobi",
   openGraph: {
     title: "Dr Dhobi Laundry | Book Pickup in Minutes",
