@@ -1,0 +1,33 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" rx="120" fill="#0d3b66"/>
+  
+  <!-- Washing Machine Icon -->
+  <rect x="140" y="100" width="232" height="280" rx="16" fill="#f9f7f3"/>
+  
+  <!-- Control Panel -->
+  <rect x="160" y="120" width="192" height="40" rx="8" fill="#1e8ba5"/>
+  
+  <!-- Display -->
+  <rect x="180" y="130" width="80" height="20" rx="4" fill="#f4a259"/>
+  
+  <!-- Buttons -->
+  <circle cx="300" cy="140" r="8" fill="#f9f7f3"/>
+  <circle cx="325" cy="140" r="8" fill="#f9f7f3"/>
+  
+  <!-- Drum/Window -->
+  <circle cx="256" cy="260" r="90" fill="#1e8ba5"/>
+  <circle cx="256" cy="260" r="70" fill="#f9f7f3" opacity="0.3"/>
+  
+  <!-- Inner Drum Detail -->
+  <circle cx="256" cy="260" r="50" fill="none" stroke="#0d3b66" stroke-width="2" stroke-dasharray="8 4"/>
+  
+  <!-- Door Handle -->
+  <rect x="240" y="340" width="32" height="8" rx="4" fill="#1e8ba5"/>
+  
+  <!-- Text "DD" Monogram -->
+  <text x="256" y="275" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#0d3b66" text-anchor="middle">DD</text>
+  
+  <!-- Bottom accent -->
+  <rect x="160" y="360" width="192" height="12" rx="6" fill="#f4a259"/>
+</svg>
