@@ -72,6 +72,9 @@ self.addEventListener("push", (event) => {
     try {
       data = event.data.json();
     } catch (e) {
+      if (e instanceof SyntaxError) {
+        console.error("Push event data is not valid JSON:", e);
+      }
       data.body = event.data.text();
     }
   }

@@ -234,7 +234,7 @@ export default function BookingPage() {
           <h2>Booking Received</h2>
           <p>
             Thanks for booking with Dr Dhobi—your request is locked in.
-            We'll follow up through {describeContactChannels(successInfo)} shortly.
+            We&apos;ll follow up through {describeContactChannels(successInfo)} shortly.
           </p>
           <div className={styles.bookingDetails}>
             <p>
@@ -285,7 +285,7 @@ export default function BookingPage() {
             <div className={styles.stepContent}>
               <h2>Your Contact Information</h2>
               <p className={styles.stepDesc}>
-                We'll use this to confirm your booking and send updates
+                We&apos;ll use this to confirm your booking and send updates
               </p>
 
               <div className={styles.formGroup}>

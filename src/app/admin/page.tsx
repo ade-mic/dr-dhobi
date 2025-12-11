@@ -15,22 +15,26 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<BookingWithId[]>([]);
   const [loading, setLoading] = useState(true);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
   const [filter, setFilter] = useState<string>("all");
   const [selectedBooking, setSelectedBooking] = useState<BookingWithId | null>(null);
   const [messageType, setMessageType] = useState<"email" | "whatsapp">("email");
   const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
 
   // Check authentication
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/admin/login");
-      } else {
-        setUserEmail(user.email || "");
+        setIsAuthenticated(false);
         setAuthLoading(false);
+        router.push("/admin/login");
+        return;
       }
+
+      setUserEmail(user.email || "");
+      setIsAuthenticated(true);
+      setAuthLoading(false);
     });
 
     return () => unsubscribe();
@@ -38,14 +42,16 @@ export default function AdminDashboard() {
 
   // Listen for new bookings and send browser notifications
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!isAuthenticated) return;
 
+    setLoading(true);
     const q = query(
       collection(db, "bookings"),
       orderBy("createdAt", "desc")
     );
 
     let isFirstLoad = true;
+    let previousCount = 0;
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const bookingData = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -53,7 +59,7 @@ export default function AdminDashboard() {
       })) as BookingWithId[];
       
       // Detect new bookings after initial load
-      if (!isFirstLoad && bookingData.length > bookings.length) {
+      if (!isFirstLoad && bookingData.length > previousCount) {
         const newBooking = bookingData[0]; // Most recent booking
         
         // Send browser notification
@@ -78,12 +84,13 @@ export default function AdminDashboard() {
       }
       
       setBookings(bookingData);
+      previousCount = bookingData.length;
       setLoading(false);
       isFirstLoad = false;
     });
 
     return () => unsubscribe();
-  }, [bookings.length]);
+  }, [isAuthenticated]);
 
   const updateBookingStatus = async (bookingId: string, status: Booking["status"]) => {
     try {
@@ -108,59 +115,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const sendMessage = async () => {
-    if (!selectedBooking || !message.trim()) {
-      alert("Please select a booking and enter a message");
-      return;
-    }
-
-    setSending(true);
-
-    try {
-      if (messageType === "email") {
-        // Send email via API route
-        const response = await fetch("/api/admin/send-message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "email",
-            to: selectedBooking.email,
-            customerName: selectedBooking.name,
-            bookingId: selectedBooking.id,
-            message,
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to send email");
-        alert("Email sent successfully!");
-      } else {
-        // Send WhatsApp via API route
-        const response = await fetch("/api/admin/send-message", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            type: "whatsapp",
-            to: selectedBooking.phone,
-            customerName: selectedBooking.name,
-            bookingId: selectedBooking.id,
-            message,
-          }),
-        });
-
-        if (!response.ok) throw new Error("Failed to send WhatsApp message");
-        alert("WhatsApp message sent successfully!");
-      }
-
-      setMessage("");
-      setSelectedBooking(null);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      alert(`Failed to send ${messageType} message`);
-    } finally {
-      setSending(false);
-    }
-  };
-
+  
   const filteredBookings = bookings.filter((booking) => {
     if (filter === "all") return true;
     return booking.status === filter;
@@ -404,13 +359,7 @@ export default function AdminDashboard() {
               >
                 Cancel
               </button>
-              <button
-                className={styles.sendBtn}
-                onClick={sendMessage}
-                disabled={sending || !message.trim()}
-              >
-                {sending ? "Sending..." : `Send ${messageType === "email" ? "Email" : "WhatsApp"}`}
-              </button>
+
             </div>
           </div>
         </div>

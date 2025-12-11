@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { FirebaseError } from "firebase/app";
 import styles from "./page.module.css";
 
 export default function AdminLogin() {
@@ -21,28 +22,32 @@ export default function AdminLogin() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/admin");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login error:", err);
-      
-      // User-friendly error messages
-      switch (err.code) {
-        case "auth/invalid-email":
-          setError("Invalid email address");
-          break;
-        case "auth/user-disabled":
-          setError("This account has been disabled");
-          break;
-        case "auth/user-not-found":
-          setError("No account found with this email");
-          break;
-        case "auth/wrong-password":
-          setError("Incorrect password");
-          break;
-        case "auth/invalid-credential":
-          setError("Invalid email or password");
-          break;
-        default:
-          setError("Login failed. Please try again.");
+
+      if (err instanceof FirebaseError) {
+        // User-friendly error messages
+        switch (err.code) {
+          case "auth/invalid-email":
+            setError("Invalid email address");
+            break;
+          case "auth/user-disabled":
+            setError("This account has been disabled");
+            break;
+          case "auth/user-not-found":
+            setError("No account found with this email");
+            break;
+          case "auth/wrong-password":
+            setError("Incorrect password");
+            break;
+          case "auth/invalid-credential":
+            setError("Invalid email or password");
+            break;
+          default:
+            setError("Login failed. Please try again.");
+        }
+      } else {
+        setError("An unexpected error occurred.");
       }
     } finally {
       setLoading(false);

@@ -147,7 +147,7 @@ export default function ServicesPage() {
           <div className={styles.headerContent}>
             <h1>Our Services</h1>
             <p>
-              Premium laundry and dry cleaning services tailored for Bangalore's
+              Premium laundry and dry cleaning services tailored for Bangalore&apos;s
               fast-paced lifestyle. Quality you can trust, delivered to your doorstep.
             </p>
           </div>
@@ -181,10 +181,10 @@ export default function ServicesPage() {
 
               <div className={`${styles.cardContent} ${isExpanded ? styles.expanded : ''}`}>
                 <div className={styles.features}>
-                  <h3><GiShoppingCart /> What's Included</h3>
+                  <h3><GiShoppingCart /> What&apos;s Included</h3>
                   <ul>
                     {service.features.slice(0, isExpanded ? undefined : 3).map((feature, index) => (
-                      <li key={feature}>
+                      <li key={index}>
                         <span className={styles.checkmark}>✓</span>
                         <span>{feature}</span>
                       </li>
@@ -245,7 +245,7 @@ export default function ServicesPage() {
             ))}
           </div>
           <p className={styles.areaNote}>
-            Don't see your area? <a href="tel:+918080808080">Call us</a> - we're
+            Don&apos;t see your area? <a href="tel:+918080808080">Call us</a> - we&apos;re
             expanding daily!
           </p>
         </section>
@@ -253,7 +253,7 @@ export default function ServicesPage() {
         <section className={styles.ctaBanner}>
           <h2>Ready to Experience Premium Laundry?</h2>
           <p>
-            Book your first pickup and get 20% off. We'll handle the rest with care
+            Book your first pickup and get 20% off. We&apos;ll handle the rest with care
             and precision.
           </p>
           <Link href="/booking" className={styles.ctaButton}>

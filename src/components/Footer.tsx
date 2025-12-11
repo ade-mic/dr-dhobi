@@ -34,7 +34,7 @@ export function Footer() {
               <span>Dr Dhobi</span>
             </div>
             <p>
-              Bangalore's trusted doorstep laundry service since 2014. Premium
+              Bangalore&apos;s trusted doorstep laundry service since 2014. Premium
               care for your fabrics, delivered with precision.
             </p>
             <div className={styles.social}>
