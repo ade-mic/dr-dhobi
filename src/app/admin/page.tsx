@@ -268,12 +268,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {notificationPermission === "granted" && (
+        {/* {notificationPermission === "granted" && (
           <div className={styles.notificationSuccess}>
             <span>✅ Notifications enabled! You'll be alerted when new bookings arrive.</span>
             <button onClick={showTestNotification}>Test Notification</button>
           </div>
-        )}
+        )} */}
         
         <div className={styles.stats}>
           <div className={styles.statCard}>
