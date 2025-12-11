@@ -35,16 +35,58 @@ export default function AdminDashboard() {
     }
 
     setNotificationPermission(Notification.permission);
-  }, [isNotificationSupported]);
+    
+    // Listen for permission changes
+    const checkPermission = setInterval(() => {
+      if (Notification.permission !== notificationPermission) {
+        setNotificationPermission(Notification.permission);
+      }
+    }, 1000);
+
+    return () => clearInterval(checkPermission);
+  }, [isNotificationSupported, notificationPermission]);
 
   const requestNotificationPermission = async () => {
-    if (!isNotificationSupported) return;
+    if (!isNotificationSupported) {
+      alert("Notifications are not supported in this browser");
+      return;
+    }
 
     try {
       const permissionResult = await Notification.requestPermission();
       setNotificationPermission(permissionResult);
+      
+      if (permissionResult === "granted") {
+        // Send a test notification
+        showTestNotification();
+      } else {
+        alert("Notification permission was denied. Please enable notifications in your browser settings.");
+      }
     } catch (error) {
       console.error("Notification permission request failed", error);
+      alert("Failed to request notification permission");
+    }
+  };
+
+  const showTestNotification = () => {
+    if (!isNotificationSupported || Notification.permission !== "granted") return;
+
+    try {
+      const notification = new Notification("🧺 Dr Dhobi - Test Notification", {
+        body: "You will receive notifications like this when new bookings arrive!",
+        icon: "/icons/icon-192.svg",
+        badge: "/icons/icon-192.svg",
+        tag: "test-notification",
+      });
+
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+
+      console.log("Test notification sent successfully");
+    } catch (error) {
+      console.error("Failed to show test notification:", error);
     }
   };
 
@@ -83,7 +125,7 @@ export default function AdminDashboard() {
         ...doc.data(),
       })) as BookingWithId[];
       
-      if (!isFirstLoad && notificationPermission === "granted") {
+      if (!isFirstLoad) {
         const newlyAdded = snapshot
           .docChanges()
           .filter((change) => change.type === "added" && !change.doc.metadata.hasPendingWrites)
@@ -93,23 +135,41 @@ export default function AdminDashboard() {
           })) as BookingWithId[];
 
         if (newlyAdded.length > 0) {
-          newlyAdded.forEach((newBooking) => {
-            const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
-              body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
-              icon: "/icons/icon-192.svg",
-              badge: "/icons/icon-192.svg",
-              tag: `booking-${newBooking.id}`,
-              requireInteraction: true,
+          console.log(`🔔 ${newlyAdded.length} new booking(s) detected:`, newlyAdded);
+          
+          if (notificationPermission === "granted") {
+            newlyAdded.forEach((newBooking) => {
+              try {
+                const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
+                  body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
+                  icon: "/icons/icon-192.svg",
+                  badge: "/icons/icon-192.svg",
+                  tag: `booking-${newBooking.id}`,
+                  requireInteraction: true,
+                });
+
+                notification.onclick = () => {
+                  window.focus();
+                  notification.close();
+                };
+
+                console.log("✅ Notification sent for booking:", newBooking.id);
+
+                // Try to play sound (non-blocking)
+                try {
+                  const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHmq+8OOYTgwOVKzn77RiFQU7k9n0yoA1Bh9qvu/fnEkMDFKs6O6yYBYGPJHY8s2DNwYaabrv45lPDAx");
+                  audio.volume = 0.5;
+                  audio.play().catch((err) => console.log("Audio play blocked:", err.message));
+                } catch (audioError) {
+                  console.log("Audio notification skipped:", audioError);
+                }
+              } catch (notificationError) {
+                console.error("Failed to show notification:", notificationError);
+              }
             });
-
-            notification.onclick = () => {
-              window.focus();
-              notification.close();
-            };
-
-            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHmq+8OOYTgwOVKzn77RiFQU7k9n0yoA1Bh9qvu/fnEkMDFKs6O6yYBYGPJHY8s2DNwYaabrv45lPDAx");
-            audio.play().catch(() => {});
-          });
+          } else {
+            console.warn("🔕 New bookings detected but notifications are not granted. Current permission:", notificationPermission);
+          }
         }
       }
 
@@ -205,6 +265,13 @@ export default function AdminDashboard() {
           <div className={styles.notificationBanner}>
             <span>Enable browser notifications to be alerted when a new booking arrives.</span>
             <button onClick={requestNotificationPermission}>Allow Notifications</button>
+          </div>
+        )}
+
+        {notificationPermission === "granted" && (
+          <div className={styles.notificationSuccess}>
+            <span>✅ Notifications enabled! You'll be alerted when new bookings arrive.</span>
+            <button onClick={showTestNotification}>Test Notification</button>
           </div>
         )}
         
