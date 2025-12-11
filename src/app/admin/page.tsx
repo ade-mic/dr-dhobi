@@ -57,6 +57,8 @@ export default function AdminDashboard() {
       setNotificationPermission(permissionResult);
       
       if (permissionResult === "granted") {
+        // Register for FCM push notifications
+        await registerForPushNotifications();
         // Send a test notification
         showTestNotification();
       } else {
@@ -65,6 +67,40 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error("Notification permission request failed", error);
       alert("Failed to request notification permission");
+    }
+  };
+
+  const registerForPushNotifications = async () => {
+    try {
+      const { getMessagingInstance } = await import("@/lib/firebase");
+      const messaging = await getMessagingInstance();
+      
+      if (!messaging) {
+        console.log("FCM not supported");
+        return;
+      }
+
+      const { getToken } = await import("firebase/messaging");
+      
+      const token = await getToken(messaging, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+      });
+
+      if (token) {
+        console.log("✅ FCM Token registered:", token);
+        
+        const { doc, setDoc } = await import("firebase/firestore");
+        if (auth.currentUser) {
+          await setDoc(doc(db, "adminTokens", auth.currentUser.uid), {
+            token,
+            email: auth.currentUser.email,
+            updatedAt: new Date(),
+          });
+          console.log("✅ Push notification token saved to Firestore");
+        }
+      }
+    } catch (error) {
+      console.error("Error registering for push notifications:", error);
     }
   };
 
@@ -103,6 +139,11 @@ export default function AdminDashboard() {
       setUserEmail(user.email || "");
       setIsAuthenticated(true);
       setAuthLoading(false);
+
+      // Auto-register for push notifications if already granted
+      if (Notification.permission === "granted") {
+        await registerForPushNotifications();
+      }
     });
 
     return () => unsubscribe();
@@ -140,20 +181,35 @@ export default function AdminDashboard() {
           if (notificationPermission === "granted") {
             newlyAdded.forEach((newBooking) => {
               try {
-                const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
-                  body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
-                  icon: "/icons/icon-192.svg",
-                  badge: "/icons/icon-192.svg",
-                  tag: `booking-${newBooking.id}`,
-                  requireInteraction: true,
-                });
+                // Try to use service worker notification for better PWA support
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                  navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    title: '🧺 Dr Dhobi - New Booking!',
+                    body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
+                    data: {
+                      bookingId: newBooking.id,
+                      url: '/admin'
+                    }
+                  });
+                  console.log("✅ Service worker notification sent for booking:", newBooking.id);
+                } else {
+                  // Fallback to regular notification
+                  const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
+                    body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
+                    icon: "/icons/icon-192.svg",
+                    badge: "/icons/icon-192.svg",
+                    tag: `booking-${newBooking.id}`,
+                    requireInteraction: true,
+                  });
 
-                notification.onclick = () => {
-                  window.focus();
-                  notification.close();
-                };
+                  notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                  };
 
-                console.log("✅ Notification sent for booking:", newBooking.id);
+                  console.log("✅ Browser notification sent for booking:", newBooking.id);
+                }
 
                 // Try to play sound (non-blocking)
                 try {
@@ -263,14 +319,14 @@ export default function AdminDashboard() {
 
         {shouldShowNotificationBanner && (
           <div className={styles.notificationBanner}>
-            <span>🔔 Enable notifications to receive real-time alerts when new bookings arrive (works when tab is open)</span>
-            <button onClick={requestNotificationPermission}>Enable Notifications</button>
+            <span>🔔 Enable push notifications to receive real-time alerts for new bookings (even when tab is closed)</span>
+            <button onClick={requestNotificationPermission}>Enable Push Notifications</button>
           </div>
         )}
 
         {notificationPermission === "granted" && (
           <div className={styles.notificationSuccess}>
-            <span>✅ Notifications enabled! You'll receive alerts instantly when new bookings arrive.</span>
+            <span>✅ Push notifications enabled! You'll receive alerts even when this tab is closed.</span>
             <button onClick={showTestNotification}>Test Notification</button>
           </div>
         )}

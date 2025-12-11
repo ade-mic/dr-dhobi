@@ -86,59 +86,47 @@ self.addEventListener("fetch", (event) => {
   );
 });
 
-// Push notification event
-self.addEventListener("push", (event) => {
-  let data = { title: "New Booking", body: "New booking received!" };
-  
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      if (e instanceof SyntaxError) {
-        console.error("Push event data is not valid JSON:", e);
-      }
-      data.body = event.data.text();
-    }
+// Handle messages from clients (for showing notifications)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, data } = event.data;
+    
+    const options = {
+      body: body,
+      icon: '/icons/icon-192.svg',
+      badge: '/icons/icon-192.svg',
+      vibrate: [200, 100, 200],
+      tag: data?.bookingId || 'booking-notification',
+      requireInteraction: true,
+      data: data || {},
+      actions: [
+        { action: 'view', title: 'View Booking' },
+        { action: 'dismiss', title: 'Dismiss' }
+      ]
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title, options)
+    );
   }
-
-  const options = {
-    body: data.body,
-    icon: "/icons/icon-192.svg",
-    badge: "/icons/icon-192.svg",
-    vibrate: [200, 100, 200],
-    tag: "booking-notification",
-    requireInteraction: true,
-    actions: [
-      { action: "view", title: "View Booking" },
-      { action: "close", title: "Dismiss" }
-    ],
-    data: {
-      url: data.url || "/admin",
-      bookingId: data.bookingId
-    }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification("🧺 Dr Dhobi - " + data.title, options)
-  );
 });
 
 // Notification click event
-self.addEventListener("notificationclick", (event) => {
+self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === "view" || !event.action) {
+  if (event.action === 'view' || !event.action) {
     event.waitUntil(
-      clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         // Check if there's already a window open
         for (let client of clientList) {
-          if (client.url.includes("/admin") && "focus" in client) {
+          if (client.url.includes('/admin') && 'focus' in client) {
             return client.focus();
           }
         }
         // Open new window if none found
         if (clients.openWindow) {
-          return clients.openWindow(event.notification.data.url);
+          return clients.openWindow('/admin');
         }
       })
     );

@@ -1,8 +1,8 @@
 {
   "functions": [
     {
-      "source": "functions",
-      "codebase": "default",
+      "source": "notification",
+      "codebase": "notification",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
         "node_modules",
