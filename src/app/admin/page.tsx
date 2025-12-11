@@ -92,7 +92,7 @@ export default function AdminDashboard() {
 
   // Check authentication
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
         setIsAuthenticated(false);
         setAuthLoading(false);
@@ -263,17 +263,17 @@ export default function AdminDashboard() {
 
         {shouldShowNotificationBanner && (
           <div className={styles.notificationBanner}>
-            <span>Enable browser notifications to be alerted when a new booking arrives.</span>
-            <button onClick={requestNotificationPermission}>Allow Notifications</button>
+            <span>🔔 Enable notifications to receive real-time alerts when new bookings arrive (works when tab is open)</span>
+            <button onClick={requestNotificationPermission}>Enable Notifications</button>
           </div>
         )}
 
-        {/* {notificationPermission === "granted" && (
+        {notificationPermission === "granted" && (
           <div className={styles.notificationSuccess}>
-            <span>✅ Notifications enabled! You'll be alerted when new bookings arrive.</span>
+            <span>✅ Notifications enabled! You'll receive alerts instantly when new bookings arrive.</span>
             <button onClick={showTestNotification}>Test Notification</button>
           </div>
-        )} */}
+        )}
         
         <div className={styles.stats}>
           <div className={styles.statCard}>
