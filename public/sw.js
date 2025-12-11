@@ -38,9 +38,29 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   if (!SHOULD_CACHE || event.request.method !== "GET") return;
 
+  const requestUrl = new URL(event.request.url);
+  const isSameOrigin = requestUrl.origin === self.location.origin;
+  const isStaticAsset =
+    isSameOrigin && STATIC_ASSETS.includes(requestUrl.pathname);
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return networkResponse;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
+      if (cachedResponse && isStaticAsset) {
         return cachedResponse;
       }
 
@@ -55,7 +75,9 @@ self.addEventListener("fetch", (event) => {
 
         const responseToCache = networkResponse.clone();
         caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+          if (isStaticAsset) {
+            cache.put(event.request, responseToCache);
+          }
         });
 
         return networkResponse;
