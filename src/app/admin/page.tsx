@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
@@ -21,6 +21,32 @@ export default function AdminDashboard() {
   const [selectedBooking, setSelectedBooking] = useState<BookingWithId | null>(null);
   const [messageType, setMessageType] = useState<"email" | "whatsapp">("email");
   const [message, setMessage] = useState("");
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+
+  const isNotificationSupported = useMemo(
+    () => typeof window !== "undefined" && "Notification" in window,
+    []
+  );
+
+  useEffect(() => {
+    if (!isNotificationSupported) {
+      setNotificationPermission("denied");
+      return;
+    }
+
+    setNotificationPermission(Notification.permission);
+  }, [isNotificationSupported]);
+
+  const requestNotificationPermission = async () => {
+    if (!isNotificationSupported) return;
+
+    try {
+      const permissionResult = await Notification.requestPermission();
+      setNotificationPermission(permissionResult);
+    } catch (error) {
+      console.error("Notification permission request failed", error);
+    }
+  };
 
   // Check authentication
   useEffect(() => {
@@ -51,46 +77,49 @@ export default function AdminDashboard() {
     );
 
     let isFirstLoad = true;
-    let previousCount = 0;
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const bookingData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as BookingWithId[];
       
-      // Detect new bookings after initial load
-      if (!isFirstLoad && bookingData.length > previousCount) {
-        const newBooking = bookingData[0]; // Most recent booking
-        
-        // Send browser notification
-        if ("Notification" in window && Notification.permission === "granted") {
-          const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
-            body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
-            icon: "/icons/icon-192.svg",
-            badge: "/icons/icon-192.svg",
-            tag: `booking-${newBooking.id}`,
-            requireInteraction: true,
+      if (!isFirstLoad && notificationPermission === "granted") {
+        const newlyAdded = snapshot
+          .docChanges()
+          .filter((change) => change.type === "added" && !change.doc.metadata.hasPendingWrites)
+          .map((change) => ({
+            id: change.doc.id,
+            ...change.doc.data(),
+          })) as BookingWithId[];
+
+        if (newlyAdded.length > 0) {
+          newlyAdded.forEach((newBooking) => {
+            const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
+              body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
+              icon: "/icons/icon-192.svg",
+              badge: "/icons/icon-192.svg",
+              tag: `booking-${newBooking.id}`,
+              requireInteraction: true,
+            });
+
+            notification.onclick = () => {
+              window.focus();
+              notification.close();
+            };
+
+            const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHmq+8OOYTgwOVKzn77RiFQU7k9n0yoA1Bh9qvu/fnEkMDFKs6O6yYBYGPJHY8s2DNwYaabrv45lPDAx");
+            audio.play().catch(() => {});
           });
-
-          notification.onclick = () => {
-            window.focus();
-            notification.close();
-          };
-
-          // Play notification sound (optional)
-          const audio = new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHmq+8OOYTgwOVKzn77RiFQU7k9n0yoA1Bh9qvu/fnEkMDFKs6O6yYBYGPJHY8s2DNwYaabrv45lPDAx");
-          audio.play().catch(() => {}); // Ignore if blocked
         }
       }
-      
+
       setBookings(bookingData);
-      previousCount = bookingData.length;
       setLoading(false);
       isFirstLoad = false;
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, notificationPermission]);
 
   const updateBookingStatus = async (bookingId: string, status: Booking["status"]) => {
     try {
@@ -157,6 +186,8 @@ export default function AdminDashboard() {
     );
   }
 
+  const shouldShowNotificationBanner = isNotificationSupported && notificationPermission !== "granted";
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
@@ -169,6 +200,13 @@ export default function AdminDashboard() {
             🚪 Sign Out
           </button>
         </div>
+
+        {shouldShowNotificationBanner && (
+          <div className={styles.notificationBanner}>
+            <span>Enable browser notifications to be alerted when a new booking arrives.</span>
+            <button onClick={requestNotificationPermission}>Allow Notifications</button>
+          </div>
+        )}
         
         <div className={styles.stats}>
           <div className={styles.statCard}>
