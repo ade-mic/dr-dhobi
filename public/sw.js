@@ -2,11 +2,19 @@ const CACHE_NAME = "dr-dhobi-v1";
 const STATIC_ASSETS = [
   "/",
   "/manifest.webmanifest",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
+  "/icons/icon-192.svg",
+  "/icons/icon-72.png",
 ];
 
+const SHOULD_CACHE = 
+  self.location.hostname !== "localhost" &&
+  self.location.hostname !== "127.0.0.1";
+
 self.addEventListener("install", (event) => {
+  if (!SHOULD_CACHE) {
+    self.skipWaiting();
+    return;
+  }
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
@@ -14,6 +22,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (!SHOULD_CACHE) return;
   event.waitUntil(
     caches.keys().then((cacheNames) =>
       Promise.all(
@@ -27,7 +36,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
+  if (!SHOULD_CACHE || event.request.method !== "GET") return;
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

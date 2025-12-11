@@ -108,16 +108,16 @@ export default function Home() {
           </div>
           <div className={styles.statBoard}>
             <div>
-              <strong>25k+</strong>
-              <span>Orders finished this year</span>
+              <strong>18+</strong>
+              <span>Areas we serve in Bangalore</span>
             </div>
             <div>
-              <strong>4.9/5</strong>
-              <span>Average customer rating</span>
+              <strong>30 min</strong>
+              <span>Average pickup time</span>
             </div>
             <div>
-              <strong>18</strong>
-              <span>Neighborhood hubs in Bangalore</span>
+              <strong>48 hrs</strong>
+              <span>Standard turnaround time</span>
             </div>
           </div>
         </section>
@@ -148,7 +148,7 @@ export default function Home() {
         </section>
 
         <section className={styles.testimonials}>
-          <h2>Loved by 25,000+ Customers</h2>
+          <h2>What Our Customers Say</h2>
           <div className={styles.testimonialGrid}>
             {testimonials.map((t) => (
               <article key={t.name}>
@@ -170,7 +170,7 @@ export default function Home() {
             <div className={styles.ctaText}>
               <h2>Ready to experience hassle-free laundry?</h2>
               <p>
-                Join thousands of happy customers across Bangalore. Book your first
+                Experience premium laundry service across Bangalore. Book your first
                 pickup today and get 20% off!
               </p>
               <Link href="/booking" className={styles.ctaButton}>

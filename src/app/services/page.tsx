@@ -1,12 +1,23 @@
+'use client';
+
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import styles from "./page.module.css";
+import { RiShirtLine } from "react-icons/ri";
+import { FaShirt } from "react-icons/fa6";
+import { FaShippingFast } from "react-icons/fa";
+import { GiShoppingCart } from "react-icons/gi";
+import { MdOutlineWorkspacePremium } from "react-icons/md";
+import { IoIosPricetag } from "react-icons/io";
+import { Clock } from "lucide-react";
+
 
 const services = [
   {
     id: "dry-cleaning",
     name: "Dry Cleaning",
-    icon: "👔",
+    icon: <RiShirtLine />,
     description:
       "Our premium dry cleaning service uses eco-friendly solvents and expert techniques to restore your delicate garments to pristine condition.",
     features: [
@@ -28,7 +39,7 @@ const services = [
   {
     id: "wash-fold",
     name: "Wash & Fold",
-    icon: "👕",
+    icon: <FaShirt />,
     description:
       "Professional washing with soft water and premium detergents, followed by neat folding and packaging. Perfect for everyday wear.",
     features: [
@@ -50,7 +61,7 @@ const services = [
   {
     id: "express",
     name: "Express Pickup",
-    icon: "⚡",
+    icon: <FaShippingFast />,
     description:
       "Need it done fast? Our express service guarantees 30-minute pickup and same-day delivery within Bangalore city limits.",
     features: [
@@ -69,7 +80,7 @@ const services = [
   {
     id: "ironing",
     name: "Premium Ironing",
-    icon: "🔥",
+    icon: <MdOutlineWorkspacePremium />,
     description:
       "Professional steam ironing with attention to every crease and collar. Your clothes will look brand new.",
     features: [
@@ -105,9 +116,33 @@ const areas = [
 ];
 
 export default function ServicesPage() {
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+
+  const toggleCard = (serviceId: string) => {
+    setExpandedCards((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(serviceId)) {
+        newSet.delete(serviceId);
+      } else {
+        newSet.add(serviceId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className={styles.page}>
       <div className={styles.container}>
+        {/* Quick Navigation
+        <nav className={styles.quickNav}>
+          {services.map((service) => (
+            <a key={service.id} href={`#${service.id}`} className={styles.navLink}>
+              <span className={styles.navIcon}>{service.icon}</span>
+              <span className={styles.navLabel}>{service.name}</span>
+            </a>
+          ))}
+        </nav> */}
+
         <header className={styles.header}>
           <div className={styles.headerContent}>
             <h1>Our Services</h1>
@@ -128,44 +163,76 @@ export default function ServicesPage() {
         </header>
 
         <div className={styles.servicesGrid}>
-          {services.map((service) => (
+          {services.map((service) => {
+            const isExpanded = expandedCards.has(service.id);
+            return (
             <section key={service.id} id={service.id} className={styles.serviceCard}>
-              <div className={styles.serviceHeader}>
-                <div className={styles.serviceIcon}>{service.icon}</div>
-                <div>
-                  <h2>{service.name}</h2>
-                  <span className={styles.turnaround}>{service.turnaround}</span>
+              <div className={styles.cardTop}>
+                <div className={styles.serviceHeader}>
+                  <div className={styles.serviceIcon}>{service.icon}</div>
+                  <div className={styles.serviceTitleGroup}>
+                    <h2>{service.name}</h2>
+                    <span className={styles.turnaround}><Clock /> {service.turnaround}</span>
+                  </div>
+                </div>
+
+                <p className={styles.serviceDesc}>{service.description}</p>
+              </div>
+
+              <div className={`${styles.cardContent} ${isExpanded ? styles.expanded : ''}`}>
+                <div className={styles.features}>
+                  <h3><GiShoppingCart /> What's Included</h3>
+                  <ul>
+                    {service.features.slice(0, isExpanded ? undefined : 3).map((feature, index) => (
+                      <li key={feature}>
+                        <span className={styles.checkmark}>✓</span>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className={styles.pricing}>
+                  <h3><IoIosPricetag /> Pricing</h3>
+                  <div className={styles.priceList}>
+                    {service.pricing.slice(0, isExpanded ? undefined : 3).map((item) => (
+                      <div key={item.item} className={styles.priceItem}>
+                        <span className={styles.itemName}>{item.item}</span>
+                        <span className={styles.priceDots}></span>
+                        <span className={styles.price}>{item.price}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <p className={styles.serviceDesc}>{service.description}</p>
+              <button 
+                className={styles.toggleButton}
+                onClick={() => toggleCard(service.id)}
+                aria-expanded={isExpanded}
+              >
+                {isExpanded ? (
+                  <>
+                    <span>Show Less</span>
+                    <span className={styles.toggleIcon}>▲</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Show More</span>
+                    <span className={styles.toggleIcon}>▼</span>
+                  </>
+                )}
+              </button>
 
-              <div className={styles.features}>
-                <h3>What's Included</h3>
-                <ul>
-                  {service.features.map((feature) => (
-                    <li key={feature}>✓ {feature}</li>
-                  ))}
-                </ul>
+              <div className={styles.cardFooter}>
+                <Link href="/booking" className={styles.bookButton}>
+                  <span>Book {service.name}</span>
+                  <span className={styles.arrow}>→</span>
+                </Link>
               </div>
-
-              <div className={styles.pricing}>
-                <h3>Pricing</h3>
-                <div className={styles.priceList}>
-                  {service.pricing.map((item) => (
-                    <div key={item.item} className={styles.priceItem}>
-                      <span>{item.item}</span>
-                      <span className={styles.price}>{item.price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Link href="/booking" className={styles.bookButton}>
-                Book {service.name} →
-              </Link>
             </section>
-          ))}
+            );
+          })}
         </div>
 
         <section className={styles.areas}>

@@ -1,37 +1,80 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import styles from "./page.module.css";
+import { RiShirtLine } from "react-icons/ri";
+import { FaShirt } from "react-icons/fa6";
+import { FaShippingFast } from "react-icons/fa";
+import { MdOutlineWorkspacePremium } from "react-icons/md";
 
-const services = [
+type Step = 1 | 2 | 3;
+
+interface BookingService {
+  id: string;
+  name: string;
+  description: string;
+  icon: ReactNode;
+  turnaround: string;
+}
+
+interface BookingFormData {
+  name: string;
+  phone: string;
+  email: string;
+  service: string;
+  date: string;
+  slot: string;
+  address: string;
+  notes: string;
+}
+
+type StepValidator = (data: BookingFormData) => Record<string, string>;
+
+interface SuccessInfo {
+  bookingId: string;
+  email: string;
+  phone: string;
+  hasEmail: boolean;
+}
+
+const describeContactChannels = ({ email, phone, hasEmail }: SuccessInfo) => {
+  const channels: string[] = [];
+  if (hasEmail && email) channels.push(`email ${email}`);
+  if (phone) channels.push(`phone ${phone}`);
+  if (!channels.length) return "our team";
+  if (channels.length === 1) return channels[0];
+  return `${channels[0]} and ${channels[1]}`;
+};
+
+const services: BookingService[] = [
   {
     id: "dry-cleaning",
     name: "Dry Cleaning",
     description: "Premium solvents, hand finishing, and inspection before delivery.",
-    icon: "👔",
+    icon: <RiShirtLine />,
     turnaround: "48 hours",
   },
   {
     id: "wash-fold",
     name: "Wash & Fold",
     description: "Eco detergents, soft water rinse, and neatly packed folds.",
-    icon: "👕",
+    icon: <FaShirt />,
     turnaround: "24 hours",
   },
   {
     id: "express",
     name: "Express Pickup",
     description: "30-minute pickup promise anywhere within Bangalore ring road.",
-    icon: "⚡",
+    icon: <FaShippingFast />,
     turnaround: "Same day",
   },
   {
     id: "ironing",
     name: "Premium Ironing",
     description: "Professional steam ironing with attention to every detail.",
-    icon: "🔥",
+    icon: <MdOutlineWorkspacePremium />,
     turnaround: "24 hours",
   },
 ];
@@ -43,68 +86,90 @@ const timeSlots = [
   "7:00 – 9:00 PM",
 ];
 
+const createInitialFormData = (): BookingFormData => ({
+  name: "",
+  phone: "",
+  email: "",
+  service: "",
+  date: "",
+  slot: "",
+  address: "",
+  notes: "",
+});
+
+const stepValidators: Record<Step, StepValidator> = {
+  1: (data) => {
+    const validationErrors: Record<string, string> = {};
+
+    if (!data.name.trim()) {
+      validationErrors.name = "Name is required";
+    }
+
+    if (!data.phone.trim()) {
+      validationErrors.phone = "Phone number is required";
+    } else if (!/^\+?[\d\s-]{10,}$/.test(data.phone)) {
+      validationErrors.phone = "Invalid phone number";
+    }
+
+    return validationErrors;
+  },
+  2: (data) => {
+    const validationErrors: Record<string, string> = {};
+
+    if (!data.service) {
+      validationErrors.service = "Please select a service";
+    }
+
+    return validationErrors;
+  },
+  3: (data) => {
+    const validationErrors: Record<string, string> = {};
+
+    if (!data.date) {
+      validationErrors.date = "Please select a date";
+    }
+    if (!data.slot) {
+      validationErrors.slot = "Please select a time slot";
+    }
+    if (!data.address.trim()) {
+      validationErrors.address = "Address is required";
+    }
+
+    return validationErrors;
+  },
+};
+
 export default function BookingPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    service: "",
-    date: "",
-    slot: "",
-    address: "",
-    notes: "",
-  });
-
+  const [step, setStep] = useState<Step>(1);
+  const [formData, setFormData] = useState<BookingFormData>(createInitialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
 
-  const validateStep = (currentStep: number) => {
-    const newErrors: Record<string, string> = {};
+  const selectedService = useMemo(
+    () => services.find((service) => service.id === formData.service),
+    [formData.service]
+  );
 
-    if (currentStep === 1) {
-      if (!formData.name.trim()) {
-        newErrors.name = "Name is required";
-      }
-      if (!formData.phone.trim()) {
-        newErrors.phone = "Phone number is required";
-      } else if (!/^\+?[\d\s-]{10,}$/.test(formData.phone)) {
-        newErrors.phone = "Invalid phone number";
-      }
-    }
-
-    if (currentStep === 2) {
-      if (!formData.service) {
-        newErrors.service = "Please select a service";
-      }
-    }
-
-    if (currentStep === 3) {
-      if (!formData.date) {
-        newErrors.date = "Please select a date";
-      }
-      if (!formData.slot) {
-        newErrors.slot = "Please select a time slot";
-      }
-      if (!formData.address.trim()) {
-        newErrors.address = "Address is required";
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+  const validateStep = useCallback(
+    (currentStep: Step) => {
+      const validationErrors = stepValidators[currentStep]?.(formData) ?? {};
+      setErrors(validationErrors);
+      return Object.keys(validationErrors).length === 0;
+    },
+    [formData]
+  );
 
   const handleNext = () => {
     if (validateStep(step)) {
-      setStep(step + 1);
+      setStep((prev) => (Math.min(prev + 1, 3) as Step));
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   const handleBack = () => {
-    setStep(step - 1);
+    setStep((prev) => (Math.max(prev - 1, 1) as Step));
     setErrors({});
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -129,25 +194,12 @@ export default function BookingPage() {
         if (!response.ok) {
           throw new Error(result.error || "Failed to create booking");
         }
-
-        // Show success message
-        alert(
-          `🎉 Booking confirmed!\n\nBooking ID: ${result.bookingId}\n\nWe've sent a confirmation ${formData.email ? 'email' : 'to your phone'}. Our team will contact you 30 minutes before pickup.`
-        );
-
-        // Reset form and redirect
-        setFormData({
-          name: "",
-          phone: "",
-          email: "",
-          service: "",
-          date: "",
-          slot: "",
-          address: "",
-          notes: "",
+        setSuccessInfo({
+          bookingId: result.bookingId,
+          email: formData.email,
+          phone: formData.phone,
+          hasEmail: Boolean(formData.email),
         });
-        setStep(1);
-        router.push("/?booking=success");
       } catch (error) {
         console.error("Booking error:", error);
         alert(
@@ -157,12 +209,52 @@ export default function BookingPage() {
     });
   };
 
-  const updateField = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-    }
-  };
+  const updateField = useCallback(
+    (field: keyof BookingFormData, value: string) => {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+      if (errors[field]) {
+        setErrors((prev) => ({ ...prev, [field]: "" }));
+      }
+    },
+    [errors]
+  );
+
+  const handleSuccessClose = useCallback(() => {
+    setSuccessInfo(null);
+    setFormData(createInitialFormData());
+    setStep(1);
+    router.push("/?booking=success");
+  }, [router]);
+
+  const successModal = successInfo ? (
+    <div className={styles.successModal} role="dialog" aria-modal="true">
+      <div className={styles.modalOverlay}>
+        <div className={styles.modalContent}>
+          <div className={styles.modalIcon}>✓</div>
+          <h2>Booking Received</h2>
+          <p>
+            Thanks for booking with Dr Dhobi—your request is locked in.
+            We'll follow up through {describeContactChannels(successInfo)} shortly.
+          </p>
+          <div className={styles.bookingDetails}>
+            <p>
+              <strong>Booking ID:</strong> {successInfo.bookingId}
+            </p>
+          </div>
+          <p className={styles.modalSubtext}>
+            Our team will contact you 30 minutes before pickup.
+          </p>
+          <button
+            type="button"
+            onClick={handleSuccessClose}
+            className={styles.modalButton}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   return (
     <div className={styles.page}>
@@ -363,7 +455,7 @@ export default function BookingPage() {
                 <div className={styles.summaryGrid}>
                   <div>
                     <strong>Service:</strong>
-                    <span>{services.find((s) => s.id === formData.service)?.name}</span>
+                    <span>{selectedService?.name}</span>
                   </div>
                   <div>
                     <strong>Pickup:</strong>
@@ -411,6 +503,7 @@ export default function BookingPage() {
           </p>
         </div>
       </div>
+      {successModal}
     </div>
   );
 }
