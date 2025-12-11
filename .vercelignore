@@ -1,0 +1,6 @@
+notification/
+functions/
+firebase-debug.log
+firebase-debug.*.log
+.firebase/
+*.log
