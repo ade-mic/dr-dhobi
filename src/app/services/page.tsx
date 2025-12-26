@@ -12,6 +12,7 @@ import { MdOutlineWorkspacePremium, MdLocalLaundryService, MdIron, MdDryCleaning
 import { IoIosPricetag } from "react-icons/io";
 import { Clock, Loader2 } from "lucide-react";
 import { ReactNode } from "react";
+import { useSettings } from "@/components/SettingsProvider";
 
 type ServiceItem = {
   id: string;
@@ -57,6 +58,7 @@ const areas = [
 ];
 
 export default function ServicesPage() {
+  const { settings } = useSettings();
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,17 +68,13 @@ export default function ServicesPage() {
     const fetchServices = async () => {
       try {
         const response = await fetch("/api/services");
-        const data = await response.json();
-        
-        // Check if data is an array (valid services response)
-        if (Array.isArray(data)) {
+        if (response.ok) {
+          const data: ServiceItem[] = await response.json();
           // Only show active services, sorted by order
           const activeServices = data
-            .filter((s: ServiceItem) => s.isActive !== false)
-            .sort((a: ServiceItem, b: ServiceItem) => (a.order || 99) - (b.order || 99));
+            .filter((s) => s.isActive)
+            .sort((a, b) => a.order - b.order);
           setServices(activeServices);
-        } else {
-          console.error("Invalid services response:", data);
         }
       } catch (error) {
         console.error("Error fetching services:", error);
@@ -208,7 +206,7 @@ export default function ServicesPage() {
           </div>
         )}
 
-        <section className={styles.areas}>
+        <section className={styles.areas} id="service-areas">
           <h2>We Serve 18+ Areas in Bangalore</h2>
           <div className={styles.areaGrid}>
             {areas.map((area) => (
@@ -218,7 +216,7 @@ export default function ServicesPage() {
             ))}
           </div>
           <p className={styles.areaNote}>
-            Don&apos;t see your area? <a href="tel:+918080808080">Call us</a> - we&apos;re
+            Don&apos;t see your area? <a href={`tel:${settings.phone}`}>Call us</a> - we&apos;re
             expanding daily!
           </p>
         </section>

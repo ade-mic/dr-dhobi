@@ -5,6 +5,7 @@ import { PwaProvider } from "@/components/PwaProvider";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthProvider";
+import { SettingsProvider } from "@/components/SettingsProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,12 +56,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <AuthProvider>
-          <Navigation />
-          {children}
-          <Footer />
-          <PwaProvider />
-        </AuthProvider>
+        <SettingsProvider>
+          <AuthProvider>
+            <Navigation />
+            {children}
+            <Footer />
+            <PwaProvider />
+          </AuthProvider>
+        </SettingsProvider>
       </body>
     </html>
   );

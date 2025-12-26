@@ -11,6 +11,7 @@ import { MdOutlineWorkspacePremium } from "react-icons/md";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import { useSettings } from "@/components/SettingsProvider";
 
 type Step = 1 | 2 | 3;
 
@@ -144,6 +145,7 @@ const stepValidators: Record<Step, StepValidator> = {
 
 export default function BookingPage() {
   const router = useRouter();
+  const { settings } = useSettings();
   const [isPending, startTransition] = useTransition();
   const [step, setStep] = useState<Step>(1);
   const [formData, setFormData] = useState<BookingFormData>(createInitialFormData);
@@ -539,7 +541,7 @@ export default function BookingPage() {
         <div className={styles.helpBox}>
           <p>
             Need help? Call us at{" "}
-            <a href="tel:+918080808080">080-8080-8080</a> or WhatsApp 24/7
+            <a href={`tel:${settings.phone}`}>{settings.phoneDisplay}</a> or WhatsApp 24/7
           </p>
         </div>
       </div>

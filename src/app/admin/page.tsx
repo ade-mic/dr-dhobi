@@ -9,14 +9,15 @@ import { useAuth } from "@/components/AuthProvider";
 import { AdminChatPanel } from "@/components/AdminChatPanel";
 import type { Booking } from "@/types/booking";
 import { GoSignOut } from "react-icons/go";
-import { MdAttachMoney, MdOutlineMessage, MdOutlineRequestQuote, MdPhone, MdEmail, MdCleaningServices, MdCalendarToday, MdAccessTime, MdLocationOn, MdNoteAlt, MdDelete, MdSupportAgent, MdPeople, MdAdminPanelSettings, MdPerson, MdSearch, MdAdd, MdEdit, MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { MdAttachMoney, MdOutlineMessage, MdOutlineRequestQuote, MdPhone, MdEmail, MdCleaningServices, MdCalendarToday, MdAccessTime, MdLocationOn, MdNoteAlt, MdDelete, MdSupportAgent, MdPeople, MdAdminPanelSettings, MdPerson, MdSearch, MdAdd, MdEdit, MdVisibility, MdVisibilityOff, MdSettings } from "react-icons/md";
 import { TbBrandBooking } from "react-icons/tb";
 import { RiShirtLine } from "react-icons/ri";
+import { SiteSettings, defaultSettings } from "@/lib/siteSettings";
 
 import styles from "./page.module.css";
 
 type BookingWithId = Booking & { id: string };
-type Message = { id: string; name: string; email: string; phone: string; message: string; createdAt: string; status?: string };
+type Message = { id: string; name: string; email: string; phone: string; message: string; createdAt: string; status?: string; subject?: string; type?: string };
 type QuoteRequest = { id: string; name: string; phone: string; email: string; serviceType: string; estimatedCost: number; createdAt: string; status: string; weight?: number; items?: Record<string, number>; selectiveWash?: boolean };
 type UserRecord = { id: string; name: string; email: string; phone?: string; role: "admin" | "user"; photoURL?: string; createdAt: string; updatedAt?: string };
 type ServicePricingItem = { item: string; price: number };
@@ -94,7 +95,7 @@ const defaultServicePricing: Record<string, ServicePricing> = {
 export default function AdminDashboard() {
   const router = useRouter();
   const { user, userProfile, loading: authLoading, isAdmin } = useAuth();
-  const [activeTab, setActiveTab] = useState<"bookings" | "pricing" | "messages" | "quotes" | "support" | "users" | "services">("bookings");
+  const [activeTab, setActiveTab] = useState<"bookings" | "pricing" | "messages" | "quotes" | "support" | "users" | "services" | "settings">("bookings");
   const [bookings, setBookings] = useState<BookingWithId[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [quoteRequests, setQuoteRequests] = useState<QuoteRequest[]>([]);
@@ -142,6 +143,10 @@ export default function AdminDashboard() {
     order: 99,
     isActive: true,
   });
+
+  // Site settings state
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(defaultSettings);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const isNotificationSupported = useMemo(
     () => typeof window !== "undefined" && "Notification" in window,
@@ -376,6 +381,45 @@ export default function AdminDashboard() {
     setShowServiceModal(true);
   };
 
+  // Site Settings functions
+  const fetchSiteSettings = async () => {
+    try {
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSiteSettings({ ...defaultSettings, ...data });
+      }
+    } catch (error) {
+      console.error("Error fetching site settings:", error);
+    }
+  };
+
+  const saveSiteSettings = async () => {
+    setSavingSettings(true);
+    try {
+      const response = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(siteSettings),
+      });
+
+      if (response.ok) {
+        alert("✅ Settings saved successfully! Changes will appear on the site.");
+      } else {
+        alert("❌ Failed to save settings");
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      alert("❌ Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const updateSetting = (key: keyof SiteSettings, value: string) => {
+    setSiteSettings(prev => ({ ...prev, [key]: value }));
+  };
+
   const fetchMessages = async () => {
     try {
       const response = await fetch("/api/messages");
@@ -490,6 +534,8 @@ export default function AdminDashboard() {
       fetchQuoteRequests();
     } else if (activeTab === "services") {
       fetchServices();
+    } else if (activeTab === "settings") {
+      fetchSiteSettings();
     }
   }, [activeTab, isAdmin]);
 
@@ -793,6 +839,12 @@ export default function AdminDashboard() {
           className={`${styles.tabButton} ${activeTab === "users" ? styles.active : ""}`}
         >
           <MdPeople /> Users ({users.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("settings")}
+          className={`${styles.tabButton} ${activeTab === "settings" ? styles.active : ""}`}
+        >
+          <MdSettings /> Settings
         </button>
       </div>
 
@@ -1155,7 +1207,7 @@ export default function AdminDashboard() {
       {/* MESSAGES TAB */}
       {activeTab === "messages" && (
         <div className={styles.tabContent}>
-          <h2 style={{ marginBottom: '20px' }}>User Messages ({messages.length})</h2>
+          <h2 style={{ marginBottom: '20px' }}>Contact Messages ({messages.length})</h2>
           {messages.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No messages yet</p>
@@ -1170,6 +1222,11 @@ export default function AdminDashboard() {
                       <p className={styles.messageCardInfo}>
                         📧 {msg.email} | 📞 {msg.phone}
                       </p>
+                      {msg.subject && (
+                        <p className={styles.messageCardInfo} style={{ marginTop: '4px' }}>
+                          📋 Subject: <strong>{msg.subject}</strong>
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => deleteMessage(msg.id)}
@@ -1453,6 +1510,214 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* SETTINGS TAB */}
+      {activeTab === "settings" && (
+        <div className={styles.tabContent}>
+          <h2 style={{ marginBottom: '20px' }}>Site Settings</h2>
+          <p style={{ color: '#666', marginBottom: '30px' }}>
+            Manage contact information, social links, and operating hours displayed across the website.
+          </p>
+
+          <div className={styles.settingsGrid}>
+            {/* Contact Information */}
+            <div className={styles.settingsSection}>
+              <h3>📞 Contact Information</h3>
+              <div className={styles.settingsGroup}>
+                <label>Phone Number (for calling)</label>
+                <input
+                  type="text"
+                  value={siteSettings.phone}
+                  onChange={(e) => updateSetting("phone", e.target.value)}
+                  placeholder="+918080808080"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Phone Display (shown on site)</label>
+                <input
+                  type="text"
+                  value={siteSettings.phoneDisplay}
+                  onChange={(e) => updateSetting("phoneDisplay", e.target.value)}
+                  placeholder="080-8080-8080"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Email Address</label>
+                <input
+                  type="email"
+                  value={siteSettings.email}
+                  onChange={(e) => updateSetting("email", e.target.value)}
+                  placeholder="hello@drdhobi.in"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>WhatsApp Number</label>
+                <input
+                  type="text"
+                  value={siteSettings.whatsappNumber}
+                  onChange={(e) => updateSetting("whatsappNumber", e.target.value)}
+                  placeholder="+918080808080"
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className={styles.settingsSection}>
+              <h3>📍 Business Address</h3>
+              <div className={styles.settingsGroup}>
+                <label>Street/Area</label>
+                <input
+                  type="text"
+                  value={siteSettings.address}
+                  onChange={(e) => updateSetting("address", e.target.value)}
+                  placeholder="Koramangala"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>City</label>
+                <input
+                  type="text"
+                  value={siteSettings.city}
+                  onChange={(e) => updateSetting("city", e.target.value)}
+                  placeholder="Bangalore"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>State</label>
+                <input
+                  type="text"
+                  value={siteSettings.state}
+                  onChange={(e) => updateSetting("state", e.target.value)}
+                  placeholder="Karnataka"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Country</label>
+                <input
+                  type="text"
+                  value={siteSettings.country}
+                  onChange={(e) => updateSetting("country", e.target.value)}
+                  placeholder="India"
+                />
+              </div>
+            </div>
+
+            {/* Operating Hours */}
+            <div className={styles.settingsSection}>
+              <h3>🕐 Operating Hours</h3>
+              <div className={styles.settingsGroup}>
+                <label>Operating Days</label>
+                <input
+                  type="text"
+                  value={siteSettings.operatingDays}
+                  onChange={(e) => updateSetting("operatingDays", e.target.value)}
+                  placeholder="Mon - Sat"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Weekday Hours</label>
+                <input
+                  type="text"
+                  value={siteSettings.weekdayHours}
+                  onChange={(e) => updateSetting("weekdayHours", e.target.value)}
+                  placeholder="8:00 AM - 8:00 PM"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Weekend Hours</label>
+                <input
+                  type="text"
+                  value={siteSettings.weekendHours}
+                  onChange={(e) => updateSetting("weekendHours", e.target.value)}
+                  placeholder="10:00 AM - 4:00 PM"
+                />
+              </div>
+            </div>
+
+            {/* Social Links */}
+            <div className={styles.settingsSection}>
+              <h3>🌐 Social Media Links</h3>
+              <div className={styles.settingsGroup}>
+                <label>Facebook URL</label>
+                <input
+                  type="url"
+                  value={siteSettings.facebookUrl}
+                  onChange={(e) => updateSetting("facebookUrl", e.target.value)}
+                  placeholder="https://facebook.com/drdhobi"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Instagram URL</label>
+                <input
+                  type="url"
+                  value={siteSettings.instagramUrl}
+                  onChange={(e) => updateSetting("instagramUrl", e.target.value)}
+                  placeholder="https://instagram.com/drdhobi"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Twitter/X URL</label>
+                <input
+                  type="url"
+                  value={siteSettings.twitterUrl}
+                  onChange={(e) => updateSetting("twitterUrl", e.target.value)}
+                  placeholder="https://x.com/drdhobi"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>WhatsApp Link</label>
+                <input
+                  type="url"
+                  value={siteSettings.whatsappUrl}
+                  onChange={(e) => updateSetting("whatsappUrl", e.target.value)}
+                  placeholder="https://wa.me/918080808080"
+                />
+              </div>
+            </div>
+
+            {/* Business Info */}
+            <div className={styles.settingsSection}>
+              <h3>🏢 Business Info</h3>
+              <div className={styles.settingsGroup}>
+                <label>Business Name</label>
+                <input
+                  type="text"
+                  value={siteSettings.businessName}
+                  onChange={(e) => updateSetting("businessName", e.target.value)}
+                  placeholder="Dr Dhobi"
+                />
+              </div>
+              <div className={styles.settingsGroup}>
+                <label>Tagline</label>
+                <input
+                  type="text"
+                  value={siteSettings.tagline}
+                  onChange={(e) => updateSetting("tagline", e.target.value)}
+                  placeholder="Premium Doorstep Laundry Service"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
+            <button
+              onClick={saveSiteSettings}
+              disabled={savingSettings}
+              className={styles.saveBtn}
+              style={{ padding: '14px 28px', fontSize: '16px' }}
+            >
+              {savingSettings ? "💾 Saving..." : "💾 Save All Settings"}
+            </button>
+            <button
+              onClick={fetchSiteSettings}
+              className={styles.cancelBtn}
+              style={{ padding: '14px 28px', fontSize: '16px' }}
+            >
+              🔄 Reset Changes
+            </button>
+          </div>
         </div>
       )}
 

@@ -5,11 +5,12 @@ import styles from "./Footer.module.css";
 import { BsFillTelephoneFill, BsTwitterX, BsWhatsapp } from "react-icons/bs";
 import { TiSocialFacebook, TiSocialInstagram } from "react-icons/ti";
 import { FaLocationPin, FaRegClock } from "react-icons/fa6";
-
 import { MdEmail } from "react-icons/md";
+import { useSettings } from "./SettingsProvider";
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
+  const { settings } = useSettings();
 
   return (
     <footer className={styles.footer}>
@@ -31,17 +32,17 @@ export function Footer() {
                   DD
                 </text>
               </svg>
-              <span>Dr Dhobi</span>
+              <span>{settings.businessName}</span>
             </div>
             <p>
-              Bangalore&apos;s trusted doorstep laundry service since 2014. Premium
+              {settings.city}&apos;s trusted doorstep laundry service. Premium
               care for your fabrics, delivered with precision.
             </p>
             <div className={styles.social}>
-              <a href="#" aria-label="Facebook"><TiSocialFacebook /></a>
-              <a href="#" aria-label="Instagram"><TiSocialInstagram /></a>
-              <a href="#" aria-label="Twitter"><BsTwitterX /></a>
-              <a href="#" aria-label="WhatsApp"><BsWhatsapp /></a>
+              <a href={settings.facebookUrl} target="_blank" rel="noopener noreferrer" aria-label="Facebook"><TiSocialFacebook /></a>
+              <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" aria-label="Instagram"><TiSocialInstagram /></a>
+              <a href={settings.twitterUrl} target="_blank" rel="noopener noreferrer" aria-label="Twitter"><BsTwitterX /></a>
+              <a href={settings.whatsappUrl} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp"><BsWhatsapp /></a>
             </div>
           </div>
 
@@ -59,25 +60,24 @@ export function Footer() {
             <h4>Company</h4>
             <ul>
               <li><Link href="/about">About Us</Link></li>
-              <li><Link href="/pricing">Pricing</Link></li>
-              <li><Link href="/areas">Service Areas</Link></li>
-              <li><Link href="/careers">Careers</Link></li>
+              <li><Link href="/quote">Quote Request</Link></li>
+              <li><Link href="/services#service-areas">Service Areas</Link></li>
             </ul>
           </div>
 
           <div>
             <h4>Contact</h4>
             <ul>
-              <li><BsFillTelephoneFill /> <a href="tel:+918080808080">080-8080-8080</a></li>
-              <li><MdEmail /> <a href="mailto:hello@drdhobi.in">hello@drdhobi.in</a></li>
-              <li><FaLocationPin /> Koramangala, Bangalore</li>
-              <li><FaRegClock /> 7 AM - 9 PM, Daily</li>
+              <li><BsFillTelephoneFill /> <a href={`tel:${settings.phone}`}>{settings.phoneDisplay}</a></li>
+              <li><MdEmail /> <a href={`mailto:${settings.email}`}>{settings.email}</a></li>
+              <li><FaLocationPin /> {settings.address}, {settings.city}</li>
+              <li><FaRegClock /> {settings.operatingDays}: {settings.weekdayHours}</li>
             </ul>
           </div>
         </div>
 
         <div className={styles.bottom}>
-          <p>&copy; {currentYear} Dr Dhobi. All rights reserved.</p>
+          <p>&copy; {currentYear} {settings.businessName}. All rights reserved.</p>
           <div className={styles.legal}>
             <Link href="/privacy">Privacy Policy</Link>
             <Link href="/terms">Terms of Service</Link>

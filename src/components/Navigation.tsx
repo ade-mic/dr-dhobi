@@ -4,13 +4,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { useAuth } from "./AuthProvider";
+import { useSettings } from "./SettingsProvider";
 import styles from "./Navigation.module.css";
 import { BsFillTelephoneFill } from "react-icons/bs";
 import Image from "next/image";
 
 export function Navigation() {
   const pathname = usePathname();
-  const { user, userProfile, loading, isAdmin } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
+  const { settings } = useSettings();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -28,6 +30,7 @@ export function Navigation() {
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },
     { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
   ];
 
   // Add user/login link based on auth state
@@ -70,11 +73,11 @@ export function Navigation() {
             </Link>
           ))}
           <a
-            href="tel:+918080808080"
+            href={`tel:${settings.phone}`}
             className={styles.phone}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <BsFillTelephoneFill /> 080-8080-8080
+            <BsFillTelephoneFill /> {settings.phoneDisplay}
           </a>
         </div>
 
