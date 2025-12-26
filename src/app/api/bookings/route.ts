@@ -3,44 +3,9 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import type { BookingFormData } from "@/types/booking";
 
-// Initialize Firebase Admin for token verification
-let adminApp: import("firebase-admin").app.App | null = null;
-
-async function getAdminApp() {
-  if (adminApp) return adminApp;
-  
-  const admin = await import("firebase-admin");
-  
-  if (!admin.apps.length) {
-    const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    if (!serviceAccount) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT_KEY is not set");
-    }
-    
-    adminApp = admin.initializeApp({
-      credential: admin.credential.cert(JSON.parse(serviceAccount)),
-    });
-  } else {
-    adminApp = admin.apps[0] as import("firebase-admin").app.App;
-  }
-  
-  return adminApp;
-}
-
-async function verifyToken(token: string): Promise<string | null> {
-  try {
-    const app = await getAdminApp();
-    const auth = (await import("firebase-admin")).auth(app);
-    const decodedToken = await auth.verifyIdToken(token);
-    return decodedToken.uid;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const data: BookingFormData = await request.json();
+    const data: BookingFormData & { userId?: string } = await request.json();
 
     // Validate required fields
     if (!data.name || !data.phone || !data.service || !data.date || !data.slot || !data.address) {
@@ -50,17 +15,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract userId from token if present
-    let userId: string | null = null;
-    const authHeader = request.headers.get("authorization");
-    if (authHeader?.startsWith("Bearer ")) {
-      const token = authHeader.substring(7);
-      userId = await verifyToken(token);
-    }
+    // Extract userId if passed from client
+    const { userId, ...bookingFields } = data;
 
     // Create booking in Firestore
     const bookingData = {
-      ...data,
+      ...bookingFields,
       ...(userId && { userId }),
       status: "pending",
       createdAt: serverTimestamp(),
@@ -71,17 +31,22 @@ export async function POST(request: NextRequest) {
 
     // Create notification for user if they have a userId
     if (userId) {
-      await addDoc(collection(db, "notifications"), {
-        userId,
-        type: "booking",
-        title: "Booking Confirmed",
-        body: `Your ${data.service} booking for ${data.date} has been received.`,
-        data: {
-          bookingId: docRef.id,
-        },
-        read: false,
-        createdAt: new Date().toISOString(),
-      });
+      try {
+        await addDoc(collection(db, "notifications"), {
+          userId,
+          type: "booking",
+          title: "Booking Confirmed",
+          body: `Your ${data.service} booking for ${data.date} has been received.`,
+          data: {
+            bookingId: docRef.id,
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      } catch (notifError) {
+        console.error("Error creating notification:", notifError);
+        // Don't fail the booking if notification fails
+      }
     }
 
     return NextResponse.json({
