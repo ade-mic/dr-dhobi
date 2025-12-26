@@ -2,26 +2,146 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { db, auth } from "@/lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { signOut } from "firebase/auth";
+import { useAuth } from "@/components/AuthProvider";
+import { AdminChatPanel } from "@/components/AdminChatPanel";
 import type { Booking } from "@/types/booking";
+import { GoSignOut } from "react-icons/go";
+import { MdAttachMoney, MdOutlineMessage, MdOutlineRequestQuote, MdPhone, MdEmail, MdCleaningServices, MdCalendarToday, MdAccessTime, MdLocationOn, MdNoteAlt, MdDelete, MdSupportAgent, MdPeople, MdAdminPanelSettings, MdPerson, MdSearch, MdAdd, MdEdit, MdVisibility, MdVisibilityOff } from "react-icons/md";
+import { TbBrandBooking } from "react-icons/tb";
+import { RiShirtLine } from "react-icons/ri";
+
 import styles from "./page.module.css";
 
 type BookingWithId = Booking & { id: string };
+type Message = { id: string; name: string; email: string; phone: string; message: string; createdAt: string; status?: string };
+type QuoteRequest = { id: string; name: string; phone: string; email: string; serviceType: string; estimatedCost: number; createdAt: string; status: string; weight?: number; items?: Record<string, number>; selectiveWash?: boolean };
+type UserRecord = { id: string; name: string; email: string; phone?: string; role: "admin" | "user"; photoURL?: string; createdAt: string; updatedAt?: string };
+type ServicePricingItem = { item: string; price: number };
+type ServicePricing = { name: string; turnaround: string; items: ServicePricingItem[] };
+type ServiceItem = {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  features: string[];
+  pricing: { item: string; price: number }[];
+  turnaround: string;
+  order: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// Available icon options for services
+const iconOptions = [
+  { id: "dry-cleaning", label: "Dry Cleaning" },
+  { id: "wash-fold", label: "Wash & Fold" },
+  { id: "express", label: "Express" },
+  { id: "ironing", label: "Ironing" },
+  { id: "laundry", label: "Laundry" },
+  { id: "iron", label: "Iron" },
+  { id: "clean", label: "Clean" },
+  { id: "default", label: "Default" },
+];
+
+// Default service pricing
+const defaultServicePricing: Record<string, ServicePricing> = {
+  "dry-cleaning": {
+    name: "Dry Cleaning",
+    turnaround: "48 hours",
+    items: [
+      { item: "Shirt / Top", price: 50 },
+      { item: "Trousers / Jeans", price: 60 },
+      { item: "Suit (2-piece)", price: 250 },
+      { item: "Dress / Saree", price: 100 },
+      { item: "Jacket / Blazer", price: 150 },
+    ],
+  },
+  "wash-fold": {
+    name: "Wash & Fold",
+    turnaround: "24 hours",
+    items: [
+      { item: "T-Shirt / Top", price: 30 },
+      { item: "Shirt (formal)", price: 40 },
+      { item: "Trousers / Jeans", price: 40 },
+      { item: "Bedsheet (single)", price: 60 },
+      { item: "Per kg (mixed)", price: 80 },
+    ],
+  },
+  "express": {
+    name: "Express Pickup",
+    turnaround: "Same day",
+    items: [
+      { item: "Express surcharge", price: 100 },
+      { item: "Same-day delivery", price: 150 },
+    ],
+  },
+  "ironing": {
+    name: "Premium Ironing",
+    turnaround: "24 hours",
+    items: [
+      { item: "Shirt / Top", price: 20 },
+      { item: "Trousers", price: 25 },
+      { item: "Dress / Saree", price: 40 },
+      { item: "Suit (2-piece)", price: 80 },
+    ],
+  },
+};
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const { user, userProfile, loading: authLoading, isAdmin } = useAuth();
+  const [activeTab, setActiveTab] = useState<"bookings" | "pricing" | "messages" | "quotes" | "support" | "users" | "services">("bookings");
   const [bookings, setBookings] = useState<BookingWithId[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [quoteRequests, setQuoteRequests] = useState<QuoteRequest[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
+  const [userSearch, setUserSearch] = useState("");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "admin" | "user">("all");
   const [loading, setLoading] = useState(true);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userEmail, setUserEmail] = useState<string>("");
   const [filter, setFilter] = useState<string>("all");
   const [selectedBooking, setSelectedBooking] = useState<BookingWithId | null>(null);
   const [messageType, setMessageType] = useState<"email" | "whatsapp">("email");
   const [message, setMessage] = useState("");
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>("default");
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [pricingTab, setPricingTab] = useState<"quote" | "services">("services");
+  const [pricing, setPricing] = useState({
+    items: {
+      shirts: 30,
+      trousers: 40,
+      tshirts: 25,
+      jeans: 50,
+      sarees: 80,
+      kurtas: 45,
+      bedsheets: 60,
+      towels: 15,
+    },
+    pickupCharge: 50,
+    freePickupThreshold: 300,
+  });
+  const [servicePricing, setServicePricing] = useState<Record<string, ServicePricing>>(defaultServicePricing);
+  const [editingService, setEditingService] = useState<string | null>(null);
+  const [savingPricing, setSavingPricing] = useState(false);
+  
+  // Services management state
+  const [allServices, setAllServices] = useState<ServiceItem[]>([]);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [editingServiceData, setEditingServiceData] = useState<ServiceItem | null>(null);
+  const [savingService, setSavingService] = useState(false);
+  const [newService, setNewService] = useState<Partial<ServiceItem>>({
+    name: "",
+    icon: "default",
+    description: "",
+    features: [""],
+    pricing: [{ item: "", price: 0 }],
+    turnaround: "24 hours",
+    order: 99,
+    isActive: true,
+  });
 
   const isNotificationSupported = useMemo(
     () => typeof window !== "undefined" && "Notification" in window,
@@ -108,7 +228,7 @@ export default function AdminDashboard() {
     if (!isNotificationSupported || Notification.permission !== "granted") return;
 
     try {
-      const notification = new Notification("🧺 Dr Dhobi - Test Notification", {
+      const notification = new Notification(" Dr Dhobi - Test Notification", {
         body: "You will receive notifications like this when new bookings arrive!",
         icon: "/icons/icon-192.svg",
         badge: "/icons/icon-192.svg",
@@ -126,32 +246,305 @@ export default function AdminDashboard() {
     }
   };
 
-  // Check authentication
+  // Check authentication and admin role
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        setIsAuthenticated(false);
-        setAuthLoading(false);
-        router.push("/admin/login");
-        return;
-      }
+    if (authLoading) return;
 
-      setUserEmail(user.email || "");
-      setIsAuthenticated(true);
-      setAuthLoading(false);
+    if (!user) {
+      router.push("/login");
+      return;
+    }
 
-      // Auto-register for push notifications if already granted
-      if (Notification.permission === "granted") {
-        await registerForPushNotifications();
+    if (!isAdmin) {
+      // User is logged in but not an admin
+      router.push("/user/dashboard");
+      return;
+    }
+
+    // Auto-register for push notifications if already granted
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "granted") {
+      registerForPushNotifications();
+    }
+
+    // Fetch pricing settings
+    fetchPricing();
+  }, [authLoading, user, isAdmin, router]);
+
+  const fetchPricing = async () => {
+    try {
+      const response = await fetch("/api/pricing");
+      if (response.ok) {
+        const data = await response.json();
+        setPricing({
+          items: data.items || pricing.items,
+          pickupCharge: data.pickupCharge || 50,
+          freePickupThreshold: data.freePickupThreshold || 300,
+        });
+        if (data.services) {
+          setServicePricing(data.services);
+        }
       }
+    } catch (error) {
+      console.error("Error fetching pricing:", error);
+    }
+  };
+
+  const fetchServices = async () => {
+    try {
+      const response = await fetch("/api/services");
+      if (response.ok) {
+        const data = await response.json();
+        setAllServices(data);
+      }
+    } catch (error) {
+      console.error("Error fetching services:", error);
+    }
+  };
+
+  const saveService = async (serviceData: Partial<ServiceItem>) => {
+    setSavingService(true);
+    try {
+      const response = await fetch("/api/services", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(serviceData),
+      });
+
+      if (response.ok) {
+        alert("✅ Service saved successfully!");
+        setShowServiceModal(false);
+        setEditingServiceData(null);
+        resetNewService();
+        fetchServices();
+      } else {
+        alert("❌ Failed to save service");
+      }
+    } catch (error) {
+      console.error("Error saving service:", error);
+      alert("❌ Failed to save service");
+    } finally {
+      setSavingService(false);
+    }
+  };
+
+  const deleteService = async (serviceId: string) => {
+    if (!confirm("Are you sure you want to delete this service? This cannot be undone.")) return;
+    
+    try {
+      const response = await fetch(`/api/services?id=${serviceId}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        alert("✅ Service deleted successfully!");
+        fetchServices();
+      } else {
+        alert("❌ Failed to delete service");
+      }
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      alert("❌ Failed to delete service");
+    }
+  };
+
+  const toggleServiceActive = async (service: ServiceItem) => {
+    await saveService({ ...service, isActive: !service.isActive });
+  };
+
+  const resetNewService = () => {
+    setNewService({
+      name: "",
+      icon: "default",
+      description: "",
+      features: [""],
+      pricing: [{ item: "", price: 0 }],
+      turnaround: "24 hours",
+      order: 99,
+      isActive: true,
+    });
+  };
+
+  const openEditService = (service: ServiceItem) => {
+    setEditingServiceData(service);
+    setNewService(service);
+    setShowServiceModal(true);
+  };
+
+  const openAddService = () => {
+    setEditingServiceData(null);
+    resetNewService();
+    setShowServiceModal(true);
+  };
+
+  const fetchMessages = async () => {
+    try {
+      const response = await fetch("/api/messages");
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data);
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+    }
+  };
+
+  const fetchQuoteRequests = async () => {
+    try {
+      const response = await fetch("/api/quotes");
+      if (response.ok) {
+        const data = await response.json();
+        setQuoteRequests(data);
+      }
+    } catch (error) {
+      console.error("Error fetching quote requests:", error);
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!confirm("Delete this message?")) return;
+    try {
+      await fetch("/api/messages", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: messageId }),
+      });
+      setMessages(messages.filter(m => m.id !== messageId));
+    } catch (error) {
+      console.error("Error deleting message:", error);
+    }
+  };
+
+  const deleteQuoteRequest = async (quoteId: string) => {
+    if (!confirm("Delete this quote request?")) return;
+    try {
+      await fetch("/api/quotes", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: quoteId }),
+      });
+      setQuoteRequests(quoteRequests.filter(q => q.id !== quoteId));
+    } catch (error) {
+      console.error("Error deleting quote request:", error);
+    }
+  };
+
+  const updateQuoteStatus = async (quoteId: string, status: string) => {
+    try {
+      const response = await fetch("/api/quotes", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: quoteId, status }),
+      });
+      if (response.ok) {
+        setQuoteRequests(quoteRequests.map(q => q.id === quoteId ? { ...q, status } : q));
+      }
+    } catch (error) {
+      console.error("Error updating quote status:", error);
+    }
+  };
+
+  const savePricing = async () => {
+    setSavingPricing(true);
+    try {
+      const response = await fetch("/api/pricing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...pricing,
+          services: servicePricing,
+        }),
+      });
+
+      if (response.ok) {
+        alert("✅ Pricing updated successfully!");
+        setShowPricingModal(false);
+        setEditingService(null);
+      } else {
+        alert("❌ Failed to update pricing");
+      }
+    } catch (error) {
+      console.error("Error saving pricing:", error);
+      alert("❌ Failed to update pricing");
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  const updateItemPrice = (item: string, price: number) => {
+    setPricing((prev) => ({
+      ...prev,
+      items: {
+        ...prev.items,
+        [item]: Math.max(0, price),
+      },
+    }));
+  };
+
+  // Fetch data based on active tab
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    if (activeTab === "messages") {
+      fetchMessages();
+    } else if (activeTab === "quotes") {
+      fetchQuoteRequests();
+    } else if (activeTab === "services") {
+      fetchServices();
+    }
+  }, [activeTab, isAdmin]);
+
+  // Listen for users
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const q = query(
+      collection(db, "users"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const userData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as UserRecord[];
+      setUsers(userData);
     });
 
     return () => unsubscribe();
-  }, [router]);
+  }, [isAdmin]);
+
+  // Update user role
+  const updateUserRole = async (userId: string, newRole: "admin" | "user") => {
+    // Prevent admin from demoting themselves
+    if (userId === user?.uid && newRole === "user") {
+      alert("You cannot demote yourself from admin!");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        role: newRole,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      alert("Failed to update user role");
+    }
+  };
+
+  // Filter users based on search and role filter
+  const filteredUsers = users.filter((u) => {
+    const matchesSearch = 
+      u.name?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.email?.toLowerCase().includes(userSearch.toLowerCase()) ||
+      u.phone?.includes(userSearch);
+    const matchesRole = userRoleFilter === "all" || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   // Listen for new bookings and send browser notifications
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAdmin) return;
 
     setLoading(true);
     const q = query(
@@ -185,7 +578,7 @@ export default function AdminDashboard() {
                 if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
                   navigator.serviceWorker.controller.postMessage({
                     type: 'SHOW_NOTIFICATION',
-                    title: '🧺 Dr Dhobi - New Booking!',
+                    title: 'Dr Dhobi - New Booking!',
                     body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
                     data: {
                       bookingId: newBooking.id,
@@ -195,7 +588,7 @@ export default function AdminDashboard() {
                   console.log("✅ Service worker notification sent for booking:", newBooking.id);
                 } else {
                   // Fallback to regular notification
-                  const notification = new Notification("🧺 Dr Dhobi - New Booking!", {
+                  const notification = new Notification(" Dr Dhobi - New Booking!", {
                     body: `${newBooking.name} booked ${newBooking.service}\nPhone: ${newBooking.phone}`,
                     icon: "/icons/icon-192.svg",
                     badge: "/icons/icon-192.svg",
@@ -235,14 +628,41 @@ export default function AdminDashboard() {
     });
 
     return () => unsubscribe();
-  }, [isAuthenticated, notificationPermission]);
+  }, [isAdmin, notificationPermission]);
 
   const updateBookingStatus = async (bookingId: string, status: Booking["status"]) => {
     try {
+      // Find the booking to get user info
+      const booking = bookings.find(b => b.id === bookingId);
+      
       await updateDoc(doc(db, "bookings", bookingId), {
         status,
         updatedAt: new Date(),
       });
+
+      // Send notification to user if they have a userId
+      if (booking?.userId) {
+        const statusMessages: Record<string, string> = {
+          pending: "Your booking is pending confirmation.",
+          confirmed: "Your booking has been confirmed! We'll pick up your laundry soon.",
+          "in-progress": "Your laundry is now being processed.",
+          completed: "Your laundry is ready! It will be delivered soon.",
+          cancelled: "Your booking has been cancelled.",
+        };
+
+        await addDoc(collection(db, "notifications"), {
+          userId: booking.userId,
+          type: "booking",
+          title: `Booking ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+          body: statusMessages[status] || `Your booking status has been updated to ${status}.`,
+          data: {
+            bookingId,
+            status,
+          },
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
     } catch (error) {
       console.error("Error updating status:", error);
       alert("Failed to update status");
@@ -280,7 +700,7 @@ export default function AdminDashboard() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push("/admin/login");
+      router.push("/login");
     } catch (error) {
       console.error("Error signing out:", error);
     }
@@ -292,6 +712,10 @@ export default function AdminDashboard() {
         <div className={styles.loading}>Checking authentication...</div>
       </div>
     );
+  }
+
+  if (!user || !isAdmin) {
+    return null;
   }
 
   if (loading) {
@@ -309,11 +733,11 @@ export default function AdminDashboard() {
       <div className={styles.header}>
         <div className={styles.headerContent}>
           <div>
-            <h1>🧺 Dr Dhobi Admin Dashboard</h1>
-            <p className={styles.userEmail}>Logged in as: {userEmail}</p>
+            <h1>Management</h1>
+            <p className={styles.userEmail}>Logged in as: {userProfile?.email || user?.email}</p>
           </div>
           <button className={styles.signOutBtn} onClick={handleSignOut}>
-            🚪 Sign Out
+            <GoSignOut /> Sign Out
           </button>
         </div>
 
@@ -324,13 +748,57 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {notificationPermission === "granted" && (
-          <div className={styles.notificationSuccess}>
-            <span>✅ Push notifications enabled! You'll receive alerts even when this tab is closed.</span>
-            <button onClick={showTestNotification}>Test Notification</button>
-          </div>
-        )}
-        
+      </div>
+
+      {/* Tab Navigation */}
+      <div className={styles.tabNavigation}>
+        <button
+          onClick={() => setActiveTab("bookings")}
+          className={`${styles.tabButton} ${activeTab === "bookings" ? styles.active : ""}`}
+        >
+          <TbBrandBooking /> Bookings ({bookings.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("pricing")}
+          className={`${styles.tabButton} ${activeTab === "pricing" ? styles.active : ""}`}
+        >
+          <MdAttachMoney /> Pricing
+        </button>
+        <button
+          onClick={() => setActiveTab("messages")}
+          className={`${styles.tabButton} ${activeTab === "messages" ? styles.active : ""}`}
+        >
+          <MdOutlineMessage /> Messages ({messages.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("quotes")}
+          className={`${styles.tabButton} ${activeTab === "quotes" ? styles.active : ""}`}
+        >
+          <MdOutlineRequestQuote /> Quote Requests ({quoteRequests.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("services")}
+          className={`${styles.tabButton} ${activeTab === "services" ? styles.active : ""}`}
+        >
+          <RiShirtLine /> Services ({allServices.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("support")}
+          className={`${styles.tabButton} ${activeTab === "support" ? styles.active : ""}`}
+        >
+          <MdSupportAgent /> Customer Support
+        </button>
+        <button
+          onClick={() => setActiveTab("users")}
+          className={`${styles.tabButton} ${activeTab === "users" ? styles.active : ""}`}
+        >
+          <MdPeople /> Users ({users.length})
+        </button>
+      </div>
+
+      {/* BOOKINGS TAB */}
+      {activeTab === "bookings" && (
+        <>
         <div className={styles.stats}>
           <div className={styles.statCard}>
             <span className={styles.statNumber}>{bookings.length}</span>
@@ -355,9 +823,8 @@ export default function AdminDashboard() {
             <span className={styles.statLabel}>Completed</span>
           </div>
         </div>
-      </div>
 
-      <div className={styles.filters}>
+        <div className={styles.filters}>
         <button
           className={filter === "all" ? styles.active : ""}
           onClick={() => setFilter("all")}
@@ -414,34 +881,34 @@ export default function AdminDashboard() {
 
             <div className={styles.bookingDetails}>
               <div className={styles.detailRow}>
-                <span className={styles.icon}>📞</span>
+                <span className={styles.icon}><MdPhone /></span>
                 <a href={`tel:${booking.phone}`}>{booking.phone}</a>
               </div>
               {booking.email && (
                 <div className={styles.detailRow}>
-                  <span className={styles.icon}>📧</span>
+                  <span className={styles.icon}><MdEmail /></span>
                   <span>{booking.email}</span>
                 </div>
               )}
               <div className={styles.detailRow}>
-                <span className={styles.icon}>🧼</span>
+                <span className={styles.icon}><MdCleaningServices /></span>
                 <span>{booking.service}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.icon}>📅</span>
+                <span className={styles.icon}><MdCalendarToday /></span>
                 <span>{new Date(booking.date).toLocaleDateString("en-IN")}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.icon}>⏰</span>
+                <span className={styles.icon}><MdAccessTime /></span>
                 <span>{booking.slot}</span>
               </div>
               <div className={styles.detailRow}>
-                <span className={styles.icon}>📍</span>
+                <span className={styles.icon}><MdLocationOn /></span>
                 <span>{booking.address}</span>
               </div>
               {booking.notes && (
                 <div className={styles.detailRow}>
-                  <span className={styles.icon}>📝</span>
+                  <span className={styles.icon}><MdNoteAlt /></span>
                   <span>{booking.notes}</span>
                 </div>
               )}
@@ -464,14 +931,14 @@ export default function AdminDashboard() {
                 className={styles.messageBtn}
                 onClick={() => setSelectedBooking(booking)}
               >
-                💬 Message
+                <MdOutlineMessage /> Message
               </button>
               
               <button
                 className={styles.deleteBtn}
                 onClick={() => deleteBooking(booking.id)}
               >
-                🗑️
+                <MdDelete /> Delete
               </button>
             </div>
           </div>
@@ -481,6 +948,511 @@ export default function AdminDashboard() {
       {filteredBookings.length === 0 && (
         <div className={styles.emptyState}>
           <p>No bookings found for this filter</p>
+        </div>
+      )}
+        </>
+      )}
+
+      {/* PRICING TAB */}
+      {activeTab === "pricing" && (
+        <div className={styles.pricingContainer}>
+          <div className={styles.pricingTabNav}>
+            <button
+              className={`${styles.pricingTabBtn} ${pricingTab === "services" ? styles.active : ""}`}
+              onClick={() => setPricingTab("services")}
+            >
+              🛒 Service Pricing
+            </button>
+            <button
+              className={`${styles.pricingTabBtn} ${pricingTab === "quote" ? styles.active : ""}`}
+              onClick={() => setPricingTab("quote")}
+            >
+              📋 Quote Pricing
+            </button>
+          </div>
+
+          {/* SERVICE PRICING (for Services Page) */}
+          {pricingTab === "services" && (
+            <div className={styles.servicePricingSection}>
+              <div className={styles.sectionHeader}>
+                <h2>Service Pricing</h2>
+                <p className={styles.sectionSubtext}>Manage prices shown on the Services page</p>
+              </div>
+
+              <div className={styles.servicesGrid}>
+                {Object.entries(servicePricing).map(([serviceId, service]) => (
+                  <div key={serviceId} className={styles.serviceCard}>
+                    <div className={styles.serviceCardHeader}>
+                      <h3>{service.name}</h3>
+                      <span className={styles.turnaroundBadge}>⏱️ {service.turnaround}</span>
+                    </div>
+
+                    {editingService === serviceId ? (
+                      <div className={styles.serviceEditForm}>
+                        <div className={styles.turnaroundEdit}>
+                          <label>Turnaround Time:</label>
+                          <input
+                            type="text"
+                            value={service.turnaround}
+                            onChange={(e) => {
+                              setServicePricing(prev => ({
+                                ...prev,
+                                [serviceId]: { ...prev[serviceId], turnaround: e.target.value }
+                              }));
+                            }}
+                            className={styles.turnaroundInput}
+                          />
+                        </div>
+
+                        <div className={styles.itemsList}>
+                          {service.items.map((item, index) => (
+                            <div key={index} className={styles.itemEditRow}>
+                              <input
+                                type="text"
+                                value={item.item}
+                                onChange={(e) => {
+                                  const newItems = [...service.items];
+                                  newItems[index] = { ...newItems[index], item: e.target.value };
+                                  setServicePricing(prev => ({
+                                    ...prev,
+                                    [serviceId]: { ...prev[serviceId], items: newItems }
+                                  }));
+                                }}
+                                className={styles.itemNameInput}
+                                placeholder="Item name"
+                              />
+                              <div className={styles.priceInputWrapper}>
+                                <span>₹</span>
+                                <input
+                                  type="number"
+                                  value={item.price}
+                                  onChange={(e) => {
+                                    const newItems = [...service.items];
+                                    newItems[index] = { ...newItems[index], price: parseInt(e.target.value) || 0 };
+                                    setServicePricing(prev => ({
+                                      ...prev,
+                                      [serviceId]: { ...prev[serviceId], items: newItems }
+                                    }));
+                                  }}
+                                  className={styles.priceInput}
+                                  min="0"
+                                />
+                              </div>
+                              <button
+                                className={styles.removeItemBtn}
+                                onClick={() => {
+                                  const newItems = service.items.filter((_, i) => i !== index);
+                                  setServicePricing(prev => ({
+                                    ...prev,
+                                    [serviceId]: { ...prev[serviceId], items: newItems }
+                                  }));
+                                }}
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        <button
+                          className={styles.addItemBtn}
+                          onClick={() => {
+                            const newItems = [...service.items, { item: "New Item", price: 0 }];
+                            setServicePricing(prev => ({
+                              ...prev,
+                              [serviceId]: { ...prev[serviceId], items: newItems }
+                            }));
+                          }}
+                        >
+                          + Add Item
+                        </button>
+
+                        <div className={styles.editActions}>
+                          <button
+                            className={styles.cancelEditBtn}
+                            onClick={() => setEditingService(null)}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className={styles.saveEditBtn}
+                            onClick={savePricing}
+                            disabled={savingPricing}
+                          >
+                            {savingPricing ? "Saving..." : "Save Changes"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className={styles.servicePriceList}>
+                          {service.items.map((item, index) => (
+                            <div key={index} className={styles.servicePriceItem}>
+                              <span>{item.item}</span>
+                              <span className={styles.servicePriceValue}>₹{item.price}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <button
+                          className={styles.editServiceBtn}
+                          onClick={() => setEditingService(serviceId)}
+                        >
+                          ✏️ Edit Prices
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* QUOTE PRICING (for instant quotes) */}
+          {pricingTab === "quote" && (
+            <>
+              <button 
+                onClick={() => setShowPricingModal(true)}
+                className={styles.pricingButton}
+              >
+                💰 Edit Quote Pricing
+              </button>
+              
+              <div className={styles.pricingCard}>
+                <h2 style={{ marginBottom: '20px' }}>Quote Calculator Pricing</h2>
+                <p className={styles.sectionSubtext} style={{ marginBottom: '20px' }}>Used for instant quote calculations</p>
+                
+                <div className={styles.pricingSection}>
+                  <h3>Item Prices (per piece)</h3>
+                  <div className={styles.priceGrid}>
+                    {Object.entries(pricing.items).map(([item, price]) => (
+                      <div key={item} className={styles.priceItem}>
+                        <p className={styles.priceItemName}>{item}</p>
+                        <p className={styles.priceItemValue}>₹{price}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={styles.pricingSection}>
+                  <h3>Pickup Settings</h3>
+                  <div className={styles.priceGrid}>
+                    <div className={styles.priceItem}>
+                      <p className={styles.priceItemName}>Pickup Charge</p>
+                      <p className={styles.priceItemValue}>₹{pricing.pickupCharge}</p>
+                    </div>
+                    <div className={styles.priceItem}>
+                      <p className={styles.priceItemName}>Free Pickup Threshold</p>
+                      <p className={styles.priceItemValue}>₹{pricing.freePickupThreshold}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* MESSAGES TAB */}
+      {activeTab === "messages" && (
+        <div className={styles.tabContent}>
+          <h2 style={{ marginBottom: '20px' }}>User Messages ({messages.length})</h2>
+          {messages.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No messages yet</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '15px' }}>
+              {messages.map((msg) => (
+                <div key={msg.id} className={styles.messageCard}>
+                  <div className={styles.messageCardHeader}>
+                    <div>
+                      <h3 className={styles.messageCardInfo}>{msg.name}</h3>
+                      <p className={styles.messageCardInfo}>
+                        📧 {msg.email} | 📞 {msg.phone}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteMessage(msg.id)}
+                      className={styles.deleteMessageBtn}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </div>
+                  <p className={styles.messageText}>{msg.message}</p>
+                  <p className={styles.messageTime}>
+                    📅 {new Date(msg.createdAt).toLocaleDateString("en-IN")} at {new Date(msg.createdAt).toLocaleTimeString("en-IN")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* QUOTES TAB */}
+      {activeTab === "quotes" && (
+        <div className={styles.tabContent}>
+          <h2 style={{ marginBottom: '20px' }}>Quote Requests ({quoteRequests.length})</h2>
+          {quoteRequests.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No quote requests yet</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '15px' }}>
+              {quoteRequests.map((quote) => (
+                <div key={quote.id} className={styles.quoteCard}>
+                  <div className={styles.quoteCardHeader}>
+                    <div>
+                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
+                        <h3 style={{ margin: '0', fontSize: '18px', fontWeight: '600', color: '#333' }}>{quote.name}</h3>
+                        <span style={{
+                          padding: '4px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          background: quote.status === 'pending' ? '#ffd700' : quote.status === 'contacted' ? '#1e8ba5' : '#2ecc71',
+                          color: quote.status === 'pending' ? '#333' : 'white'
+                        }}>
+                          {quote.status}
+                        </span>
+                      </div>
+                      <p className={styles.quoteCardInfo} style={{ marginTop: '0' }}>
+                        📞 {quote.phone} | 📧 {quote.email}
+                      </p>
+                    </div>
+                    <div className={styles.quoteActions}>
+                      <select
+                        value={quote.status}
+                        onChange={(e) => updateQuoteStatus(quote.id, e.target.value)}
+                        className={styles.quoteStatusSelect}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="converted">Converted</option>
+                      </select>
+                      <button
+                        onClick={() => deleteQuoteRequest(quote.id)}
+                        className={styles.quoteDeleteBtn}
+                      >
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className={styles.quoteDetailsGrid}>
+                    <div className={styles.quoteDetailItem}>
+                      <p className={styles.quoteDetailLabel}>Service</p>
+                      <p className={styles.quoteDetailValue}>{quote.serviceType.replace('-', ' ')}</p>
+                    </div>
+                    <div className={styles.quoteDetailItem}>
+                      <p className={styles.quoteDetailLabel}>Estimated Cost</p>
+                      <p className={`${styles.quoteDetailValue} ${styles.highlighted}`}>₹{quote.estimatedCost}</p>
+                    </div>
+                    {quote.weight && (
+                      <div className={styles.quoteDetailItem}>
+                        <p className={styles.quoteDetailLabel}>Weight</p>
+                        <p className={styles.quoteDetailValue}>{quote.weight} kg</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {quote.items && Object.values(quote.items).some(v => v > 0) && (
+                    <div className={styles.quoteItemsSection}>
+                      <p className={styles.quoteItemsLabel}>Items</p>
+                      <div className={styles.quoteItemsList}>
+                        {Object.entries(quote.items).filter(([, qty]) => qty > 0).map(([item, qty]) => (
+                          <span key={item} className={styles.quoteItemBadge}>
+                            {item} ×{qty}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <p style={{ margin: '0', color: '#999', fontSize: '12px' }}>
+                    📅 {new Date(quote.createdAt).toLocaleDateString("en-IN")} at {new Date(quote.createdAt).toLocaleTimeString("en-IN")}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* SERVICES TAB */}
+      {activeTab === "services" && (
+        <div className={styles.servicesManagement}>
+          <div className={styles.servicesHeader}>
+            <div>
+              <h2>Service Management</h2>
+              <p className={styles.sectionSubtext}>Add, edit, or remove services shown on the Services page</p>
+            </div>
+            <button className={styles.addServiceBtn} onClick={openAddService}>
+              <MdAdd /> Add New Service
+            </button>
+          </div>
+
+          <div className={styles.servicesList}>
+            {allServices.length === 0 ? (
+              <div className={styles.emptyState}>
+                <p>No services found. Add your first service!</p>
+              </div>
+            ) : (
+              allServices.map((service) => (
+                <div key={service.id} className={`${styles.serviceManageCard} ${!service.isActive ? styles.inactive : ""}`}>
+                  <div className={styles.serviceManageHeader}>
+                    <div className={styles.serviceManageInfo}>
+                      <h3>{service.name}</h3>
+                      <span className={styles.serviceIconBadge}>Icon: {service.icon}</span>
+                      <span className={styles.turnaroundBadge}>⏱️ {service.turnaround}</span>
+                      <span className={`${styles.statusBadge} ${service.isActive ? styles.active : styles.inactive}`}>
+                        {service.isActive ? "Active" : "Hidden"}
+                      </span>
+                    </div>
+                    <div className={styles.serviceManageActions}>
+                      <button
+                        className={styles.toggleVisibilityBtn}
+                        onClick={() => toggleServiceActive(service)}
+                        title={service.isActive ? "Hide service" : "Show service"}
+                      >
+                        {service.isActive ? <MdVisibilityOff /> : <MdVisibility />}
+                      </button>
+                      <button
+                        className={styles.editBtn}
+                        onClick={() => openEditService(service)}
+                      >
+                        <MdEdit /> Edit
+                      </button>
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={() => deleteService(service.id)}
+                      >
+                        <MdDelete />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <p className={styles.serviceManageDesc}>{service.description}</p>
+                  
+                  <div className={styles.serviceManageDetails}>
+                    <div className={styles.featuresPreview}>
+                      <strong>Features:</strong>
+                      <ul>
+                        {service.features.slice(0, 3).map((f, i) => (
+                          <li key={i}>{f}</li>
+                        ))}
+                        {service.features.length > 3 && <li>+{service.features.length - 3} more</li>}
+                      </ul>
+                    </div>
+                    <div className={styles.pricingPreview}>
+                      <strong>Pricing:</strong>
+                      <ul>
+                        {service.pricing.slice(0, 3).map((p, i) => (
+                          <li key={i}>{p.item}: ₹{p.price}</li>
+                        ))}
+                        {service.pricing.length > 3 && <li>+{service.pricing.length - 3} more</li>}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* SUPPORT CHAT TAB */}
+      {activeTab === "support" && (
+        <div className={styles.supportSection}>
+          <AdminChatPanel />
+        </div>
+      )}
+
+      {/* USERS TAB */}
+      {activeTab === "users" && (
+        <div className={styles.usersSection}>
+          <div className={styles.usersHeader}>
+            <h2><MdPeople /> User Management ({users.length} users)</h2>
+            <div className={styles.usersControls}>
+              <div className={styles.searchBox}>
+                <MdSearch />
+                <input
+                  type="text"
+                  placeholder="Search by name, email, or phone..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+              </div>
+              <div className={styles.roleFilter}>
+                <button
+                  className={userRoleFilter === "all" ? styles.active : ""}
+                  onClick={() => setUserRoleFilter("all")}
+                >
+                  All
+                </button>
+                <button
+                  className={userRoleFilter === "admin" ? styles.active : ""}
+                  onClick={() => setUserRoleFilter("admin")}
+                >
+                  <MdAdminPanelSettings /> Admins ({users.filter(u => u.role === "admin").length})
+                </button>
+                <button
+                  className={userRoleFilter === "user" ? styles.active : ""}
+                  onClick={() => setUserRoleFilter("user")}
+                >
+                  <MdPerson /> Users ({users.filter(u => u.role === "user").length})
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {filteredUsers.length === 0 ? (
+            <div className={styles.emptyState}>
+              <p>No users found</p>
+            </div>
+          ) : (
+            <div className={styles.usersGrid}>
+              {filteredUsers.map((u) => (
+                <div key={u.id} className={styles.userCard}>
+                  <div className={styles.userAvatar}>
+                    {u.photoURL ? (
+                      <img src={u.photoURL} alt={u.name} />
+                    ) : (
+                      <span>{(u.name || u.email || "?").charAt(0).toUpperCase()}</span>
+                    )}
+                    <span className={`${styles.roleBadge} ${styles[u.role]}`}>
+                      {u.role === "admin" ? <MdAdminPanelSettings /> : <MdPerson />}
+                    </span>
+                  </div>
+                  <div className={styles.userInfo}>
+                    <h3>{u.name || "No name"}</h3>
+                    <p className={styles.userEmail}><MdEmail /> {u.email}</p>
+                    {u.phone && <p className={styles.userPhone}><MdPhone /> {u.phone}</p>}
+                    <p className={styles.userDate}>
+                      Joined: {new Date(u.createdAt).toLocaleDateString("en-IN")}
+                    </p>
+                  </div>
+                  <div className={styles.userActions}>
+                    <label className={styles.roleToggle}>
+                      <span>Role:</span>
+                      <select
+                        value={u.role}
+                        onChange={(e) => updateUserRole(u.id, e.target.value as "admin" | "user")}
+                        disabled={u.id === user?.uid}
+                        className={u.role === "admin" ? styles.adminSelect : styles.userSelect}
+                      >
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                    </label>
+                    {u.id === user?.uid && (
+                      <span className={styles.youBadge}>You</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -521,6 +1493,298 @@ export default function AdminDashboard() {
                 Cancel
               </button>
 
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showPricingModal && (
+        <div className={styles.modal} onClick={() => setShowPricingModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2>💰 Manage Pricing</h2>
+            <p className={styles.modalSubtext}>Set prices for instant quotations</p>
+
+            <div className={styles.pricingSection}>
+              <h3 className={styles.pricingSectionTitle}>Item Prices (per piece)</h3>
+              <div className={styles.pricingItemsGrid}>
+                {Object.entries(pricing.items).map(([item, price]) => (
+                  <div key={item} className={styles.pricingInputGroup}>
+                    <label className={styles.pricingInputLabel}>
+                      {item}
+                    </label>
+                    <div className={styles.pricingInputWrapper}>
+                      <span className={styles.pricingCurrencySymbol}>₹</span>
+                      <input
+                        type="number"
+                        value={price}
+                        onChange={(e) => updateItemPrice(item, parseInt(e.target.value) || 0)}
+                        className={styles.pricingInput}
+                        min="0"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.pricingSection}>
+              <h3 className={styles.pricingSectionTitle}>Pickup Settings</h3>
+              <div className={styles.pickupSettings}>
+                <div className={styles.pickupSettingItem}>
+                  <label className={styles.pricingInputLabel}>
+                    Pickup Charge
+                  </label>
+                  <div className={styles.pricingInputWrapper}>
+                    <span className={styles.pricingCurrencySymbol}>₹</span>
+                    <input
+                      type="number"
+                      value={pricing.pickupCharge}
+                      onChange={(e) => setPricing(prev => ({ ...prev, pickupCharge: parseInt(e.target.value) || 0 }))}
+                      className={styles.pricingInput}
+                      min="0"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.pickupSettingItem}>
+                  <label className={styles.pricingInputLabel}>
+                    Free Pickup Threshold (minimum order value)
+                  </label>
+                  <div className={styles.pricingInputWrapper}>
+                    <span className={styles.pricingCurrencySymbol}>₹</span>
+                    <input
+                      type="number"
+                      value={pricing.freePickupThreshold}
+                      onChange={(e) => setPricing(prev => ({ ...prev, freePickupThreshold: parseInt(e.target.value) || 0 }))}
+                      className={styles.pricingInput}
+                      min="0"
+                    />
+                  </div>
+                  <p className={styles.pickupHint}>
+                    Orders above this amount get free pickup
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setShowPricingModal(false)}
+                disabled={savingPricing}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={savePricing}
+                disabled={savingPricing}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  background: savingPricing ? '#999' : '#1e8ba5',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: savingPricing ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  flex: 1,
+                  minWidth: '120px',
+                }}
+              >
+                {savingPricing ? '💾 Saving...' : '💾 Save Pricing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SERVICE ADD/EDIT MODAL */}
+      {showServiceModal && (
+        <div className={styles.modal} onClick={() => setShowServiceModal(false)}>
+          <div className={styles.serviceModalContent} onClick={(e) => e.stopPropagation()}>
+            <h2>{editingServiceData ? "✏️ Edit Service" : "➕ Add New Service"}</h2>
+            
+            <div className={styles.serviceForm}>
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label>Service Name *</label>
+                  <input
+                    type="text"
+                    value={newService.name || ""}
+                    onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                    placeholder="e.g., Dry Cleaning"
+                    className={styles.formInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Icon</label>
+                  <select
+                    value={newService.icon || "default"}
+                    onChange={(e) => setNewService({ ...newService, icon: e.target.value })}
+                    className={styles.formSelect}
+                  >
+                    {iconOptions.map((opt) => (
+                      <option key={opt.id} value={opt.id}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label>Turnaround Time</label>
+                  <input
+                    type="text"
+                    value={newService.turnaround || ""}
+                    onChange={(e) => setNewService({ ...newService, turnaround: e.target.value })}
+                    placeholder="e.g., 24 hours"
+                    className={styles.formInput}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label>Display Order</label>
+                  <input
+                    type="number"
+                    value={newService.order || 99}
+                    onChange={(e) => setNewService({ ...newService, order: parseInt(e.target.value) || 99 })}
+                    className={styles.formInput}
+                    min="1"
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Description *</label>
+                <textarea
+                  value={newService.description || ""}
+                  onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                  placeholder="Describe the service..."
+                  className={styles.formTextarea}
+                  rows={3}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Features</label>
+                <div className={styles.dynamicList}>
+                  {(newService.features || [""]).map((feature, index) => (
+                    <div key={index} className={styles.dynamicListItem}>
+                      <input
+                        type="text"
+                        value={feature}
+                        onChange={(e) => {
+                          const updatedFeatures = [...(newService.features || [])];
+                          updatedFeatures[index] = e.target.value;
+                          setNewService({ ...newService, features: updatedFeatures });
+                        }}
+                        placeholder="Feature description"
+                        className={styles.formInput}
+                      />
+                      <button
+                        type="button"
+                        className={styles.removeItemBtn}
+                        onClick={() => {
+                          const updatedFeatures = (newService.features || []).filter((_, i) => i !== index);
+                          setNewService({ ...newService, features: updatedFeatures.length ? updatedFeatures : [""] });
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className={styles.addItemBtn}
+                    onClick={() => setNewService({ ...newService, features: [...(newService.features || []), ""] })}
+                  >
+                    + Add Feature
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Pricing Items</label>
+                <div className={styles.dynamicList}>
+                  {(newService.pricing || [{ item: "", price: 0 }]).map((priceItem, index) => (
+                    <div key={index} className={styles.pricingRow}>
+                      <input
+                        type="text"
+                        value={priceItem.item}
+                        onChange={(e) => {
+                          const updatedPricing = [...(newService.pricing || [])];
+                          updatedPricing[index] = { ...updatedPricing[index], item: e.target.value };
+                          setNewService({ ...newService, pricing: updatedPricing });
+                        }}
+                        placeholder="Item name"
+                        className={styles.formInput}
+                      />
+                      <div className={styles.priceInputWrapper}>
+                        <span>₹</span>
+                        <input
+                          type="number"
+                          value={priceItem.price}
+                          onChange={(e) => {
+                            const updatedPricing = [...(newService.pricing || [])];
+                            updatedPricing[index] = { ...updatedPricing[index], price: parseInt(e.target.value) || 0 };
+                            setNewService({ ...newService, pricing: updatedPricing });
+                          }}
+                          className={styles.priceInput}
+                          min="0"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className={styles.removeItemBtn}
+                        onClick={() => {
+                          const updatedPricing = (newService.pricing || []).filter((_, i) => i !== index);
+                          setNewService({ ...newService, pricing: updatedPricing.length ? updatedPricing : [{ item: "", price: 0 }] });
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className={styles.addItemBtn}
+                    onClick={() => setNewService({ ...newService, pricing: [...(newService.pricing || []), { item: "", price: 0 }] })}
+                  >
+                    + Add Pricing Item
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label className={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    checked={newService.isActive !== false}
+                    onChange={(e) => setNewService({ ...newService, isActive: e.target.checked })}
+                  />
+                  <span>Service is active (visible on website)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => {
+                  setShowServiceModal(false);
+                  setEditingServiceData(null);
+                  resetNewService();
+                }}
+                disabled={savingService}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.saveBtn}
+                onClick={() => saveService(editingServiceData ? { ...newService, id: editingServiceData.id, createdAt: editingServiceData.createdAt } : newService)}
+                disabled={savingService || !newService.name || !newService.description}
+              >
+                {savingService ? "💾 Saving..." : editingServiceData ? "💾 Update Service" : "💾 Create Service"}
+              </button>
             </div>
           </div>
         </div>

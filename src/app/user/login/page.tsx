@@ -3,8 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// Redirect old admin login to unified login page
-export default function AdminLoginRedirect() {
+// Redirect old user login to unified login page
+export default function UserLoginRedirect() {
   const router = useRouter();
 
   useEffect(() => {

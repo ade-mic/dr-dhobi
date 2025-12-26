@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { useAuth } from "./AuthProvider";
 import styles from "./Navigation.module.css";
 import { BsFillTelephoneFill } from "react-icons/bs";
 import Image from "next/image";
 
 export function Navigation() {
   const pathname = usePathname();
+  const { user, userProfile, loading, isAdmin } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -21,12 +23,26 @@ export function Navigation() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const navItems = [
+  // Base navigation items
+  const baseNavItems = [
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },
-    { href: "/booking", label: "Book Now" },
-    { href: "/admin", label: "Admin" },
+    { href: "/about", label: "About" },
   ];
+
+  // Add user/login link based on auth state
+  const navItems = [...baseNavItems];
+  if (!loading) {
+    if (user) {
+      if (isAdmin) {
+        navItems.push({ href: "/admin", label: "Manage" });
+      } else {
+        navItems.push({ href: "/user/dashboard", label: "My Laundry" });
+      }
+    } else {
+      navItems.push({ href: "/login", label: "Sign In" });
+    }
+  }
 
   return (
     <nav className={`${styles.nav} ${scrolled ? styles.scrolled : ""}`}>
@@ -62,8 +78,8 @@ export function Navigation() {
           </a>
         </div>
 
-        <Link href="/booking" className={styles.ctaButton}>
-          Quick Booking
+        <Link href="/quote" className={styles.ctaButton}>
+          Get Quote
         </Link>
 
         <button

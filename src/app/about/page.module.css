@@ -1,0 +1,607 @@
+.page {
+  min-height: 100vh;
+  background: var(--dr-dhobi-cream);
+  padding-top: 80px;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 4.5rem;
+}
+
+/* Hero Section */
+.hero {
+  padding: 40px 0 60px;
+}
+
+.heroGrid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .heroGrid {
+    grid-template-columns: 1fr 1.2fr;
+    gap: 64px;
+  }
+}
+
+.heroImageWrapper {
+  position: relative;
+}
+
+.heroImageContainer {
+  position: relative;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(13, 59, 102, 0.15);
+  transition: transform 0.3s;
+}
+
+.heroImageContainer:hover {
+  transform: translateY(-8px);
+}
+
+.heroImage {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.heroImageOverlay {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+}
+
+.overlayBadge {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dr-dhobi-navy);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.heroText {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.heroText h1 {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  line-height: 1.1;
+  margin: 0;
+}
+
+.heroSubtitle {
+  font-size: 18px;
+  color: var(--dr-dhobi-gray);
+  line-height: 1.7;
+  max-width: 600px;
+}
+
+/* Old stats styles - can be removed */
+.heroStats {
+  font-size: clamp(36px, 6vw, 56px);
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 16px;
+}
+
+.heroSubtitle {
+  font-size: 20px;
+  color: var(--dr-dhobi-gray);
+  max-width: 600px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+/* End old hero styles */
+
+/* Story Section */
+.story {
+  padding: 60px 0;
+}
+
+.storyGrid {
+  display: grid;
+  gap: 48px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .storyGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.storyText h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 24px;
+}
+
+.storyText p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--dr-dhobi-gray);
+  margin-bottom: 20px;
+}
+
+.storyImage {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.image {
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+/* Values Section */
+.values {
+  padding: 80px 0;
+  text-align: center;
+}
+
+.values h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 48px;
+}
+
+.valuesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.valueCard {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--dr-dhobi-light-gray);
+  transition: all 0.3s;
+}
+
+.valueCard:hover {
+  border-color: var(--dr-dhobi-teal);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(30, 139, 165, 0.12);
+}
+
+.valueIcon {
+  font-size: 48px;
+  color: var(--dr-dhobi-teal);
+  margin-bottom: 16px;
+}
+
+.valueCard h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 12px;
+}
+
+.valueCard p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--dr-dhobi-gray);
+}
+
+/* Why Different Section */
+.whyDifferent {
+  padding: 60px 0;
+  text-align: center;
+  background: white;
+  margin: 40px 0;
+  border-radius: 16px;
+  padding: 60px 40px;
+}
+
+.whyDifferent h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 48px;
+}
+
+.differenceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+}
+
+.differenceCard {
+  padding: 32px;
+  background: var(--dr-dhobi-cream);
+  border-radius: 12px;
+  border: 2px solid var(--dr-dhobi-light-gray);
+  transition: all 0.3s;
+}
+
+.differenceCard:hover {
+  border-color: var(--dr-dhobi-teal);
+  transform: translateY(-4px);
+}
+
+.differenceCard h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 12px;
+}
+
+.differenceCard p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--dr-dhobi-gray);
+}
+
+/* Vision Section */
+.vision {
+  padding: 60px 0;
+  text-align: center;
+}
+
+.visionContent h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 24px;
+}
+
+.visionContent > p {
+  font-size: 18px;
+  line-height: 1.8;
+  color: var(--dr-dhobi-gray);
+  max-width: 800px;
+  margin: 0 auto 48px;
+}
+
+.commitments {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 32px;
+  background: white;
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(13, 59, 102, 0.08);
+}
+
+.commitment {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.commitment strong {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+}
+
+.commitment span {
+  font-size: 14px;
+  color: var(--dr-dhobi-gray);
+}
+
+/* Timeline Section - OLD (can be removed) */
+.timeline {
+  padding: 60px 0;
+  text-align: center;
+}
+
+.timeline h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 48px;
+}
+
+.timelineContainer {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.timelineContainer::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--dr-dhobi-teal);
+  transform: translateX(-50%);
+}
+
+@media (max-width: 768px) {
+  .timelineContainer::before {
+    left: 20px;
+  }
+}
+
+.timelineItem {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-bottom: 40px;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .timelineItem {
+    grid-template-columns: auto 1fr;
+    gap: 24px;
+    padding-left: 50px;
+  }
+}
+
+.timelineItem:nth-child(even) .timelineYear {
+  order: 2;
+  text-align: left;
+}
+
+.timelineItem:nth-child(even) .timelineEvent {
+  order: 1;
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .timelineItem:nth-child(even) .timelineYear {
+    order: 1;
+  }
+  
+  .timelineItem:nth-child(even) .timelineEvent {
+    order: 2;
+    text-align: left;
+  }
+}
+
+.timelineYear {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--dr-dhobi-teal);
+  text-align: right;
+  padding: 8px 0;
+}
+
+@media (max-width: 768px) {
+  .timelineYear {
+    text-align: left;
+    font-size: 18px;
+    min-width: 60px;
+  }
+}
+
+.timelineEvent {
+  font-size: 16px;
+  color: var(--dr-dhobi-gray);
+  padding: 8px 24px;
+  background: white;
+  border-radius: 8px;
+  border: 2px solid var(--dr-dhobi-light-gray);
+  text-align: left;
+}
+
+/* Stats Section */
+.stats {
+  padding: 60px 0;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 32px;
+  background: white;
+  padding: 48px;
+  border-radius: 16px;
+  box-shadow: 0 4px 24px rgba(13, 59, 102, 0.08);
+}
+
+.statCard {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.statCard strong {
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+}
+
+.statCard span {
+  font-size: 15px;
+  color: var(--dr-dhobi-gray);
+}
+
+/* Team Section */
+.team {
+  padding: 80px 0;
+  text-align: center;
+}
+
+.team h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 16px;
+}
+
+.teamIntro {
+  font-size: 16px;
+  color: var(--dr-dhobi-gray);
+  margin-bottom: 48px;
+}
+
+.teamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+  max-width: 400px;
+  margin: 0 auto 32px;
+}
+
+.teamCard {
+  background: white;
+  padding: 32px;
+  border-radius: 16px;
+  border: 2px solid var(--dr-dhobi-light-gray);
+  transition: all 0.3s;
+}
+
+.teamCard:hover {
+  border-color: var(--dr-dhobi-teal);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(30, 139, 165, 0.12);
+}
+
+.teamImageWrapper {
+  margin-bottom: 20px;
+}
+
+.teamImagePlaceholder {
+  width: 120px;
+  height: 120px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--dr-dhobi-teal), var(--dr-dhobi-navy));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 48px;
+  font-weight: 700;
+  color: white;
+}
+
+.teamCard h3 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 8px;
+}
+
+.role {
+  font-size: 14px;
+  color: var(--dr-dhobi-teal);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+
+.bio {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--dr-dhobi-gray);
+}
+
+.joinNote {
+  font-size: 15px;
+  color: var(--dr-dhobi-gray);
+  font-style: italic;
+  margin-top: 40px;
+}
+
+/* CTA Section */
+.cta {
+  padding: 80px 0;
+  text-align: center;
+  background: white;
+  border-radius: 16px;
+  margin: 40px 0;
+}
+
+.cta h2 {
+  font-size: 36px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 16px;
+}
+
+.cta p {
+  font-size: 18px;
+  color: var(--dr-dhobi-gray);
+  margin-bottom: 32px;
+}
+
+.ctaButtons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.primaryBtn,
+.secondaryBtn {
+  padding: 16px 32px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s;
+  display: inline-block;
+}
+
+.primaryBtn {
+  background: var(--dr-dhobi-navy);
+  color: white;
+}
+
+.primaryBtn:hover {
+  background: var(--dr-dhobi-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 59, 102, 0.25);
+}
+
+.secondaryBtn {
+  background: transparent;
+  border: 2px solid var(--dr-dhobi-navy);
+  color: var(--dr-dhobi-navy);
+}
+
+.secondaryBtn:hover {
+  background: var(--dr-dhobi-navy);
+  color: white;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+  
+  .hero {
+    padding: 40px 0;
+  }
+  
+  .story,
+  .values,
+  .whyDifferent,
+  .vision,
+  .team {
+    padding: 60px 0;
+  }
+  
+  .whyDifferent {
+    padding: 40px 20px;
+  }
+  
+  .commitments {
+    padding: 32px 20px;
+  }
+}

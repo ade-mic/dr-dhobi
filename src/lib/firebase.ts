@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getMessaging, isSupported } from "firebase/messaging";
 
@@ -16,7 +16,12 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Initialize services
-export const db = getFirestore(app);
+export const db = getApps().length === 1 
+  ? initializeFirestore(app, {
+      ignoreUndefinedProperties: true,
+    })
+  : getFirestore(app);
+
 export const auth = getAuth(app);
 
 // Initialize messaging (only in browser with support)

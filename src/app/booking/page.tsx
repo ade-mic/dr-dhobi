@@ -1,13 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useMemo, useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 import { RiShirtLine } from "react-icons/ri";
 import { FaShirt } from "react-icons/fa6";
 import { FaShippingFast } from "react-icons/fa";
 import { MdOutlineWorkspacePremium } from "react-icons/md";
+import { auth, db } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 type Step = 1 | 2 | 3;
 
@@ -146,6 +149,38 @@ export default function BookingPage() {
   const [formData, setFormData] = useState<BookingFormData>(createInitialFormData);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successInfo, setSuccessInfo] = useState<SuccessInfo | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isLoadingUser, setIsLoadingUser] = useState(true);
+
+  // Check authentication and auto-fill user data
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setUserId(user.uid);
+        
+        // Fetch user profile from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setFormData((prev) => ({
+              ...prev,
+              name: userData.name || prev.name,
+              email: userData.email || prev.email,
+              phone: userData.phone || prev.phone,
+            }));
+          }
+        } catch (error) {
+          console.error("Error fetching user data:", error);
+        }
+      } else {
+        setUserId(null);
+      }
+      setIsLoadingUser(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   const selectedService = useMemo(
     () => services.find((service) => service.id === formData.service),
@@ -181,12 +216,17 @@ export default function BookingPage() {
 
     startTransition(async () => {
       try {
+        const bookingData = {
+          ...formData,
+          ...(userId && { userId }), // Add userId if user is logged in
+        };
+
         const response = await fetch("/api/bookings", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(bookingData),
         });
 
         const result = await response.json();

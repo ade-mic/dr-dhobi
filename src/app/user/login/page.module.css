@@ -1,0 +1,164 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem;
+  margin-top: 40px;
+}
+
+.loginBox {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 30px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 380px;
+}
+
+.loginBox h1 {
+  text-align: center;
+  color: #1e8ba5;
+  margin-bottom: 0.3rem;
+  font-size: 2rem;
+}
+
+.loginBox h2 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 0.3rem;
+  font-size: 1.2rem;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+  font-size: 0.95rem;
+}
+
+.error {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c00;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.formGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.formGroup label {
+  font-weight: 600;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.formGroup input {
+  padding: 0.85rem 1rem;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.formGroup input:focus {
+  outline: none;
+  border-color: #1e8ba5;
+  box-shadow: 0 0 0 3px rgba(30, 139, 165, 0.1);
+}
+
+.submitBtn {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: linear-gradient(135deg, #1e8ba5 0%, #167a8d 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.submitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(30, 139, 165, 0.4);
+}
+
+.submitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toggleMode {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.toggleMode p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.toggleBtn {
+  background: none;
+  border: none;
+  color: #1e8ba5;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  text-decoration: underline;
+  font-size: 0.95rem;
+}
+
+.toggleBtn:hover {
+  color: #167a8d;
+}
+
+.adminLink {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.adminLink a {
+  color: #666;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
+}
+
+.adminLink a:hover {
+  color: #1e8ba5;
+}
+
+@media (max-width: 480px) {
+  .loginBox {
+    padding:  1.5rem;
+  }
+
+  .loginBox h1 {
+    font-size: 1.5rem;
+  }
+
+  .loginBox h2 {
+    font-size: 1.2rem;
+  }
+
+  .formGroup input {
+    font-size: 14px; /* Prevent zoom on mobile */
+  }
+}

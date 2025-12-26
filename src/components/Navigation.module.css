@@ -18,8 +18,7 @@
 
 .container {
   max-width: 1280px;
-  margin: 0 auto;
-  padding: 16px 24px;
+  padding: 16px 4rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -103,6 +102,37 @@
   transform: translateY(-2px);
 }
 
+.rightSection {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.loginLink,
+.dashboardLink {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 20px;
+  background: transparent;
+  color: #0d3b66;
+  border: 2px solid #1e8ba5;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.loginLink:hover,
+.dashboardLink:hover {
+  background: #1e8ba5;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(30, 139, 165, 0.3);
+}
+
 .ctaButton {
   padding: 12px 24px;
   background: var(--dr-dhobi-navy);
@@ -166,7 +196,7 @@
     display: flex;
   }
 
-  .ctaButton {
+  .rightSection {
     display: none;
   }
 
@@ -174,11 +204,19 @@
     width: 100%;
     text-align: center;
   }
+
+  .links.open .loginLink,
+  .links.open .dashboardLink,
+  .links.open .ctaButton {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 @media (max-width: 600px) {
   .container {
-    padding: 12px 20px;
+    padding: 12px 1.5rem;
   }
 
   .logo span {

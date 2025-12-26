@@ -95,6 +95,36 @@
   border-radius: 16px;
 }
 
+/* Loading and Empty States */
+.loadingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  gap: 16px;
+  color: #666;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  color: #1e8ba5;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.emptyState {
+  text-align: center;
+  padding: 80px 20px;
+  color: #666;
+  font-size: 18px;
+}
+
 .servicesGrid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);

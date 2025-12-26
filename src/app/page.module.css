@@ -7,12 +7,12 @@
 .shell {
   max-width: 1280px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 4.5rem;
 }
 
 /* Hero Section */
 .hero {
-  padding: 80px 0 60px;
+  padding: 0 0 60px;
   display: grid;
   gap: 48px;
 }
@@ -41,7 +41,7 @@
   position: relative;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(13, 59, 102, 0.15);
+
 }
 
 .mainImage {
@@ -52,7 +52,7 @@
 }
 
 .hero h1 {
-  font-size: clamp(36px, 5vw, 56px);
+  font-size: clamp(24px, 5vw, 46px);
   font-weight: 700;
   line-height: 1.25;
   color: var(--dr-dhobi-navy);
@@ -118,7 +118,8 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 32px;
-  padding: 40px;
+  padding: 1.1rem;
+  text-align: center;
   background: white;
   border-radius: 16px;
   box-shadow: 0 4px 24px rgba(13, 59, 102, 0.08);
@@ -145,69 +146,159 @@
 /* Services Section */
 .services {
   padding: 80px 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 24px;
+  text-align: center;
 }
 
-.services article {
+.services h2 {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin-bottom: 16px;
+}
+
+.servicesIntro {
+  font-size: 18px;
+  color: var(--dr-dhobi-gray);
+  max-width: 700px;
+  margin: 0 auto 48px;
+  line-height: 1.6;
+}
+
+.serviceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  margin-bottom: 48px;
+}
+
+.serviceCard {
   background: white;
-  padding: 32px;
-  border-radius: 12px;
+  padding: 36px 28px;
+  border-radius: 16px;
   border: 2px solid var(--dr-dhobi-light-gray);
-  transition: all 0.3s;
+  transition: all 0.3s ease;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  text-align: left;
 }
 
-.services article:hover {
+.serviceCard:hover {
   border-color: var(--dr-dhobi-teal);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(30, 139, 165, 0.12);
+  transform: translateY(-8px);
+  box-shadow: 0 12px 40px rgba(30, 139, 165, 0.15);
 }
 
 .serviceIcon {
-  font-size: 48px;
+  font-size: 56px;
   line-height: 1;
-  justify-content: center;
-  align-items: center;
-  display: flex;
+  color: var(--dr-dhobi-teal);
+  margin-bottom: 8px;
 }
 
 .services header {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  justify-content: center;
-  align-items: center;
-  display: flex;
 }
 
-.services header p {
+.serviceBadge {
   display: inline-block;
-  padding: 4px 12px;
+  padding: 6px 14px;
   background: var(--dr-dhobi-orange);
   color: white;
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   width: fit-content;
 }
 
 .services h3 {
-  font-size: 24px;
+  font-size: 26px;
   font-weight: 700;
   color: var(--dr-dhobi-navy);
+  margin: 0;
 }
 
-.services article > p {
+.serviceCopy {
   font-size: 15px;
   line-height: 1.6;
   color: var(--dr-dhobi-gray);
+  margin: 0;
+}
+
+.serviceFeatures {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.serviceFeatures li {
+  font-size: 14px;
+  color: var(--dr-dhobi-gray);
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.serviceFeatures li::before {
+  content: '✓';
+  color: var(--dr-dhobi-teal);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.servicePricing {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dr-dhobi-navy);
+  margin: 8px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--dr-dhobi-light-gray);
+}
+
+.serviceLink {
+  display: inline-block;
+  color: var(--dr-dhobi-teal);
+  font-weight: 600;
+  font-size: 14px;
+  text-decoration: none;
+  transition: all 0.2s;
+  margin-top: auto;
+}
+
+.serviceLink:hover {
+  color: var(--dr-dhobi-navy);
+  transform: translateX(4px);
+}
+
+.servicesFooter {
   text-align: center;
+  margin-top: 48px;
+}
+
+.viewAllServices {
+  display: inline-block;
+  padding: 16px 32px;
+  background: var(--dr-dhobi-navy);
+  color: white;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  text-decoration: none;
+  transition: all 0.3s;
+}
+
+.viewAllServices:hover {
+  background: var(--dr-dhobi-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(13, 59, 102, 0.25);
 }
 
 /* Steps Section */
