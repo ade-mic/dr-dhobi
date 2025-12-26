@@ -11,6 +11,7 @@ import { SiC } from "react-icons/si";
 import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
+import { LoginBanner } from "@/components/LoginBanner";
 
 export default function QuotePage() {
   const [quoteMode, setQuoteMode] = useState<"instant" | "contact" | null>(null);
@@ -161,11 +162,11 @@ export default function QuotePage() {
     }));
   };
 
-  const calculateEstimate = () => {
+  const calculateEstimate = (): number => {
     let total = 0;
     const selectedService = getServiceConfig(formData.serviceType);
     
-    if (!selectedService) return;
+    if (!selectedService) return 0;
 
     if (selectedService.inputType === "weight") {
       // For wash & fold - use weight
@@ -185,6 +186,7 @@ export default function QuotePage() {
     }
     
     setEstimatedCost(total);
+    return total;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -208,99 +210,37 @@ export default function QuotePage() {
             <p>Choose how you'd like to proceed with your laundry service</p>
           </section>
 
-          <div style={{ 
-            display: 'grid', 
-            gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
-            gap: '30px', 
-            maxWidth: '900px', 
-            margin: '40px auto',
-            padding: '0 20px'
-          }}>
+          {/* Login Banner for non-logged-in users */}
+          {!userId && <LoginBanner variant="quote" />}
+
+          <div className={styles.modeGrid}>
             {/* Instant Quote Option */}
             <div 
               onClick={() => setQuoteMode("instant")}
-              style={{
-                background: 'white',
-                padding: '40px 30px',
-                borderRadius: '16px',
-                cursor: 'pointer',
-                transition: 'transform 0.3s, box-shadow 0.3s, border 0.3s',
-                boxShadow: '0 4px 24px rgba(13, 59, 102, 0.08)',
-                border: '2px solid #e5e7eb',
-                textAlign: 'center',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(30, 139, 165, 0.15)';
-                e.currentTarget.style.border = '2px solid #1e8ba5';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 24px rgba(13, 59, 102, 0.08)';
-                e.currentTarget.style.border = '2px solid #e5e7eb';
-              }}
+              className={`${styles.modeCard} ${styles.modeCardInstant}`}
             >
-              <div style={{ fontSize: '60px', marginBottom: '20px' }}><FaBoltLightning /></div>
-              <h2 style={{ fontSize: '24px', marginBottom: '15px', fontWeight: 'bold', color: '#0d3b66' }}>
-                Instant Quote
-              </h2>
-              <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#6b7280' }}>
+              <div className={styles.modeIcon}><FaBoltLightning /></div>
+              <h2>Instant Quote</h2>
+              <p>
                 Get an immediate price estimate by selecting your items and quantities. Quick and convenient!
               </p>
-              <div style={{ 
-                marginTop: '25px', 
-                padding: '12px 24px', 
-                background: '#1e8ba5', 
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: 'white'
-              }}>
-                 Get Price in Seconds
+              <div className={`${styles.modeBadge} ${styles.modeBadgeInstant}`}>
+                Get Price in Seconds
               </div>
             </div>
 
             {/* Contact for Quote Option */}
             <div 
               onClick={() => setQuoteMode("contact")}
-              style={{
-                background: 'white',
-                padding: '40px 30px',
-                borderRadius: '16px',
-                cursor: 'pointer',
-                transition: 'transform 0.3s, box-shadow 0.3s, border 0.3s',
-                boxShadow: '0 4px 24px rgba(13, 59, 102, 0.08)',
-                border: '2px solid #e5e7eb',
-                textAlign: 'center',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 8px 32px rgba(244, 162, 89, 0.15)';
-                e.currentTarget.style.border = '2px solid #f4a259';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 24px rgba(13, 59, 102, 0.08)';
-                e.currentTarget.style.border = '2px solid #e5e7eb';
-              }}
+              className={`${styles.modeCard} ${styles.modeCardContact}`}
             >
-              <div style={{ fontSize: '60px', marginBottom: '20px' }}><SlCallOut /></div>
-              <h2 style={{ fontSize: '24px', marginBottom: '15px', fontWeight: 'bold', color: '#0d3b66' }}>
-                Contact for Quote
-              </h2>
-              <p style={{ fontSize: '16px', lineHeight: '1.6', color: '#6b7280' }}>
+              <div className={styles.modeIcon}><SlCallOut /></div>
+              <h2>Contact for Quote</h2>
+              <p>
                 Prefer to discuss your requirements? Our team will call you to provide a personalized quote.
               </p>
-              <div style={{ 
-                marginTop: '25px', 
-                padding: '12px 24px', 
-                background: '#f4a259', 
-                borderRadius: '8px',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: 'white'
-              }}>
-                 Personalized Service
+              <div className={`${styles.modeBadge} ${styles.modeBadgeContact}`}>
+                Personalized Service
               </div>
             </div>
           </div>
@@ -390,7 +330,7 @@ export default function QuotePage() {
                     onChange={handleInputChange}
                     required
                     placeholder="+91 98765 43210"
-                    pattern="[0-9+\s-]{10,15}"
+                    pattern="[0-9+ -]{10,15}"
                   />
                 </div>
 
@@ -872,13 +812,13 @@ export default function QuotePage() {
           <form 
             onSubmit={async (e) => {
               e.preventDefault();
-              calculateEstimate();
+              const finalCost = calculateEstimate();
               
               // Save quote request to database
               try {
                 const quoteData = {
                   ...formData,
-                  estimatedCost,
+                  estimatedCost: finalCost,
                   ...(userId && { userId }), // Add userId if user is logged in
                 };
 
@@ -927,7 +867,7 @@ export default function QuotePage() {
                     onChange={handleInputChange}
                     required
                     placeholder="+91 98765 43210"
-                    pattern="[0-9+\s-]{10,15}"
+                    pattern="[0-9+ -]{10,15}"
                   />
                 </div>
 

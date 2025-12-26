@@ -12,6 +12,7 @@ import { auth, db } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useSettings } from "@/components/SettingsProvider";
+import { LoginBanner } from "@/components/LoginBanner";
 
 type Step = 1 | 2 | 3;
 
@@ -304,6 +305,10 @@ export default function BookingPage() {
         <div className={styles.header}>
           <h1>Book Your Service</h1>
           <p>Complete your booking in 3 simple steps</p>
+          
+          {/* Login Banner for non-logged-in users */}
+          {!isLoadingUser && !userId && <LoginBanner variant="booking" />}
+          
           <div className={styles.progress}>
             <div className={`${styles.progressStep} ${step >= 1 ? styles.active : ""}`}>
               <span>1</span>
