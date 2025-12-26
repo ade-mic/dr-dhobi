@@ -17,9 +17,10 @@ import { SiteSettings, defaultSettings } from "@/lib/siteSettings";
 import styles from "./page.module.css";
 
 type BookingWithId = Booking & { id: string };
-type Message = { id: string; name: string; email: string; phone: string; message: string; createdAt: string; status?: string; subject?: string; type?: string };
-type QuoteRequest = { id: string; name: string; phone: string; email: string; serviceType: string; estimatedCost: number; createdAt: string; status: string; weight?: number; items?: Record<string, number>; selectiveWash?: boolean };
+type Message = { id: string; name: string; email: string; phone: string; message: string; createdAt: string; status?: string; subject?: string; type?: string; read?: boolean };
+type QuoteRequest = { id: string; name: string; phone: string; email: string; serviceType: string; estimatedCost: number; createdAt: string; status: string; weight?: number; items?: Record<string, number>; selectiveWash?: boolean; read?: boolean };
 type UserRecord = { id: string; name: string; email: string; phone?: string; role: "admin" | "user"; photoURL?: string; createdAt: string; updatedAt?: string };
+type ChatSession = { id: string; userName: string; userEmail?: string; status: "active" | "closed"; unreadCount: number; lastMessage?: string; lastMessageAt?: string; createdAt: string };
 type ServicePricingItem = { item: string; price: number };
 type ServicePricing = { name: string; turnaround: string; items: ServicePricingItem[] };
 type ServiceItem = {
@@ -148,6 +149,21 @@ export default function AdminDashboard() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(defaultSettings);
   const [savingSettings, setSavingSettings] = useState(false);
 
+  // Real-time notification badge counts
+  const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [unreadQuotes, setUnreadQuotes] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
+  
+  // Conversation stats for support tab
+  const [conversationStats, setConversationStats] = useState({
+    total: 0,
+    open: 0,
+    pending: 0,
+    resolved: 0,
+    closed: 0,
+  });
+
   const isNotificationSupported = useMemo(
     () => typeof window !== "undefined" && "Notification" in window,
     []
@@ -201,7 +217,6 @@ export default function AdminDashboard() {
       const messaging = await getMessagingInstance();
       
       if (!messaging) {
-        console.log("FCM not supported");
         return;
       }
 
@@ -212,7 +227,6 @@ export default function AdminDashboard() {
       });
 
       if (token) {
-        console.log("✅ FCM Token registered:", token);
         
         const { doc, setDoc } = await import("firebase/firestore");
         if (auth.currentUser) {
@@ -221,7 +235,6 @@ export default function AdminDashboard() {
             email: auth.currentUser.email,
             updatedAt: new Date(),
           });
-          console.log("✅ Push notification token saved to Firestore");
         }
       }
     } catch (error) {
@@ -244,8 +257,6 @@ export default function AdminDashboard() {
         window.focus();
         notification.close();
       };
-
-      console.log("Test notification sent successfully");
     } catch (error) {
       console.error("Failed to show test notification:", error);
     }
@@ -458,6 +469,23 @@ export default function AdminDashboard() {
     }
   };
 
+  const markMessageAsRead = async (messageId: string) => {
+    try {
+      await updateDoc(doc(db, "messages", messageId), { read: true });
+    } catch (error) {
+      console.error("Error marking message as read:", error);
+    }
+  };
+
+  const markAllMessagesAsRead = async () => {
+    try {
+      const unreadMsgs = messages.filter(m => !m.read);
+      await Promise.all(unreadMsgs.map(m => updateDoc(doc(db, "messages", m.id), { read: true })));
+    } catch (error) {
+      console.error("Error marking all messages as read:", error);
+    }
+  };
+
   const deleteQuoteRequest = async (quoteId: string) => {
     if (!confirm("Delete this quote request?")) return;
     try {
@@ -469,6 +497,23 @@ export default function AdminDashboard() {
       setQuoteRequests(quoteRequests.filter(q => q.id !== quoteId));
     } catch (error) {
       console.error("Error deleting quote request:", error);
+    }
+  };
+
+  const markQuoteAsRead = async (quoteId: string) => {
+    try {
+      await updateDoc(doc(db, "quoteRequests", quoteId), { read: true });
+    } catch (error) {
+      console.error("Error marking quote as read:", error);
+    }
+  };
+
+  const markAllQuotesAsRead = async () => {
+    try {
+      const unreadQuotesList = quoteRequests.filter(q => !q.read);
+      await Promise.all(unreadQuotesList.map(q => updateDoc(doc(db, "quoteRequests", q.id), { read: true })));
+    } catch (error) {
+      console.error("Error marking all quotes as read:", error);
     }
   };
 
@@ -524,15 +569,137 @@ export default function AdminDashboard() {
     }));
   };
 
-  // Fetch data based on active tab
+  // Real-time listener for messages
   useEffect(() => {
     if (!isAdmin) return;
 
-    if (activeTab === "messages") {
-      fetchMessages();
-    } else if (activeTab === "quotes") {
-      fetchQuoteRequests();
-    } else if (activeTab === "services") {
+    const q = query(collection(db, "messages"), orderBy("createdAt", "desc"));
+    let isFirstLoad = true;
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const messageData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Message[];
+      
+      setMessages(messageData);
+      setUnreadMessages(messageData.filter(m => !m.read).length);
+
+      // Show browser notification for new messages (not on first load)
+      if (!isFirstLoad && notificationPermission === "granted") {
+        const newMessages = snapshot.docChanges().filter(
+          change => change.type === "added" && !change.doc.metadata.hasPendingWrites
+        );
+        if (newMessages.length > 0) {
+          const msg = newMessages[0].doc.data();
+          new Notification("📬 New Contact Message", {
+            body: `${msg.name}: ${msg.message?.substring(0, 50)}...`,
+            icon: "/icons/icon-192.svg",
+            tag: "new-message",
+          });
+        }
+      }
+      isFirstLoad = false;
+    }, (error) => {
+      console.error("Error listening to messages:", error);
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, notificationPermission]);
+
+  // Real-time listener for quote requests
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const q = query(collection(db, "quoteRequests"), orderBy("createdAt", "desc"));
+    let isFirstLoad = true;
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const quoteData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as QuoteRequest[];
+      
+      setQuoteRequests(quoteData);
+      setUnreadQuotes(quoteData.filter(q => !q.read && q.status === "pending").length);
+
+      // Show browser notification for new quotes (not on first load)
+      if (!isFirstLoad && notificationPermission === "granted") {
+        const newQuotes = snapshot.docChanges().filter(
+          change => change.type === "added" && !change.doc.metadata.hasPendingWrites
+        );
+        if (newQuotes.length > 0) {
+          const quote = newQuotes[0].doc.data();
+          new Notification("📋 New Quote Request", {
+            body: `${quote.name} - ${quote.serviceType} - ₹${quote.estimatedCost}`,
+            icon: "/icons/icon-192.svg",
+            tag: "new-quote",
+          });
+        }
+      }
+      isFirstLoad = false;
+    }, (error) => {
+      console.error("Error listening to quotes:", error);
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, notificationPermission]);
+
+  // Real-time listener for conversations (customer support chats)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const q = query(collection(db, "conversations"), orderBy("lastMessageAt", "desc"));
+    let isFirstLoad = true;
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const conversationData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as { id: string; userName: string; lastMessage?: string; unreadByAdmin?: number; status: string }[];
+      
+      // Calculate unread count from conversations
+      const totalUnread = conversationData.reduce((acc, conv) => acc + (conv.unreadByAdmin || 0), 0);
+      setUnreadChats(totalUnread);
+      
+      // Calculate stats by status
+      setConversationStats({
+        total: conversationData.length,
+        open: conversationData.filter(c => c.status === "open").length,
+        pending: conversationData.filter(c => c.status === "pending").length,
+        resolved: conversationData.filter(c => c.status === "resolved").length,
+        closed: conversationData.filter(c => c.status === "closed").length,
+      });
+
+      // Show browser notification for new chat messages (not on first load)
+      if (!isFirstLoad && notificationPermission === "granted") {
+        const modifiedConvs = snapshot.docChanges().filter(
+          change => change.type === "modified" && !change.doc.metadata.hasPendingWrites
+        );
+        if (modifiedConvs.length > 0) {
+          const conv = modifiedConvs[0].doc.data();
+          if (conv.unreadByAdmin > 0) {
+            new Notification("💬 New Support Message", {
+              body: `${conv.userName}: ${conv.lastMessage?.substring(0, 50)}...`,
+              icon: "/icons/icon-192.svg",
+              tag: "new-chat",
+            });
+          }
+        }
+      }
+      isFirstLoad = false;
+    }, (error) => {
+      console.error("Error listening to conversations:", error);
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, notificationPermission]);
+
+  // Fetch services and settings based on active tab
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    if (activeTab === "services") {
       fetchServices();
     } else if (activeTab === "settings") {
       fetchSiteSettings();
@@ -615,7 +782,6 @@ export default function AdminDashboard() {
           })) as BookingWithId[];
 
         if (newlyAdded.length > 0) {
-          console.log(`🔔 ${newlyAdded.length} new booking(s) detected:`, newlyAdded);
           
           if (notificationPermission === "granted") {
             newlyAdded.forEach((newBooking) => {
@@ -631,7 +797,6 @@ export default function AdminDashboard() {
                       url: '/admin'
                     }
                   });
-                  console.log("✅ Service worker notification sent for booking:", newBooking.id);
                 } else {
                   // Fallback to regular notification
                   const notification = new Notification(" Dr Dhobi - New Booking!", {
@@ -647,7 +812,6 @@ export default function AdminDashboard() {
                     notification.close();
                   };
 
-                  console.log("✅ Browser notification sent for booking:", newBooking.id);
                 }
 
                 // Try to play sound (non-blocking)
@@ -656,7 +820,7 @@ export default function AdminDashboard() {
                   audio.volume = 0.5;
                   audio.play().catch((err) => console.log("Audio play blocked:", err.message));
                 } catch (audioError) {
-                  console.log("Audio notification skipped:", audioError);
+                  console.error("Failed to play notification sound:", audioError);
                 }
               } catch (notificationError) {
                 console.error("Failed to show notification:", notificationError);
@@ -815,12 +979,14 @@ export default function AdminDashboard() {
           className={`${styles.tabButton} ${activeTab === "messages" ? styles.active : ""}`}
         >
           <MdOutlineMessage /> Messages ({messages.length})
+          {unreadMessages > 0 && <span className={styles.badge}>{unreadMessages}</span>}
         </button>
         <button
           onClick={() => setActiveTab("quotes")}
           className={`${styles.tabButton} ${activeTab === "quotes" ? styles.active : ""}`}
         >
           <MdOutlineRequestQuote /> Quote Requests ({quoteRequests.length})
+          {unreadQuotes > 0 && <span className={styles.badge}>{unreadQuotes}</span>}
         </button>
         <button
           onClick={() => setActiveTab("services")}
@@ -832,7 +998,8 @@ export default function AdminDashboard() {
           onClick={() => setActiveTab("support")}
           className={`${styles.tabButton} ${activeTab === "support" ? styles.active : ""}`}
         >
-          <MdSupportAgent /> Customer Support
+          <MdSupportAgent /> Customer Support ({conversationStats.total})
+          {unreadChats > 0 && <span className={styles.badge}>{unreadChats}</span>}
         </button>
         <button
           onClick={() => setActiveTab("users")}
@@ -1207,7 +1374,14 @@ export default function AdminDashboard() {
       {/* MESSAGES TAB */}
       {activeTab === "messages" && (
         <div className={styles.tabContent}>
-          <h2 style={{ marginBottom: '20px' }}>Contact Messages ({messages.length})</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0 }}>Contact Messages ({messages.length})</h2>
+            {unreadMessages > 0 && (
+              <button onClick={markAllMessagesAsRead} className={styles.markAllReadBtn}>
+                ✓ Mark All as Read ({unreadMessages})
+              </button>
+            )}
+          </div>
           {messages.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No messages yet</p>
@@ -1215,10 +1389,17 @@ export default function AdminDashboard() {
           ) : (
             <div style={{ display: 'grid', gap: '15px' }}>
               {messages.map((msg) => (
-                <div key={msg.id} className={styles.messageCard}>
+                <div 
+                  key={msg.id} 
+                  className={`${styles.messageCard} ${!msg.read ? styles.unread : ''}`}
+                  onClick={() => !msg.read && markMessageAsRead(msg.id)}
+                >
                   <div className={styles.messageCardHeader}>
                     <div>
-                      <h3 className={styles.messageCardInfo}>{msg.name}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <h3 className={styles.messageCardInfo}>{msg.name}</h3>
+                        {!msg.read && <span className={styles.newBadge}>NEW</span>}
+                      </div>
                       <p className={styles.messageCardInfo}>
                         📧 {msg.email} | 📞 {msg.phone}
                       </p>
@@ -1229,7 +1410,7 @@ export default function AdminDashboard() {
                       )}
                     </div>
                     <button
-                      onClick={() => deleteMessage(msg.id)}
+                      onClick={(e) => { e.stopPropagation(); deleteMessage(msg.id); }}
                       className={styles.deleteMessageBtn}
                     >
                       🗑️ Delete
@@ -1249,7 +1430,14 @@ export default function AdminDashboard() {
       {/* QUOTES TAB */}
       {activeTab === "quotes" && (
         <div className={styles.tabContent}>
-          <h2 style={{ marginBottom: '20px' }}>Quote Requests ({quoteRequests.length})</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ margin: 0 }}>Quote Requests ({quoteRequests.length})</h2>
+            {unreadQuotes > 0 && (
+              <button onClick={markAllQuotesAsRead} className={styles.markAllReadBtn}>
+                ✓ Mark All as Read ({unreadQuotes})
+              </button>
+            )}
+          </div>
           {quoteRequests.length === 0 ? (
             <div className={styles.emptyState}>
               <p>No quote requests yet</p>
@@ -1257,11 +1445,16 @@ export default function AdminDashboard() {
           ) : (
             <div style={{ display: 'grid', gap: '15px' }}>
               {quoteRequests.map((quote) => (
-                <div key={quote.id} className={styles.quoteCard}>
+                <div 
+                  key={quote.id} 
+                  className={`${styles.quoteCard} ${!quote.read ? styles.unread : ''}`}
+                  onClick={() => !quote.read && markQuoteAsRead(quote.id)}
+                >
                   <div className={styles.quoteCardHeader}>
                     <div>
                       <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '8px' }}>
                         <h3 style={{ margin: '0', fontSize: '18px', fontWeight: '600', color: '#333' }}>{quote.name}</h3>
+                        {!quote.read && <span className={styles.newBadge}>NEW</span>}
                         <span style={{
                           padding: '4px 12px',
                           borderRadius: '20px',

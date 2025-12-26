@@ -17,9 +17,8 @@ const messaging = firebase.messaging();
 
 // Handle background messages
 messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Received background message', payload);
   
-  const notificationTitle = payload.notification?.title || '🧺 Dr Dhobi - New Booking!';
+  const notificationTitle = payload.notification?.title || ' Dr Dhobi - New Booking!';
   const notificationOptions = {
     body: payload.notification?.body || 'A new booking has been received',
     icon: '/icons/icon-192.svg',

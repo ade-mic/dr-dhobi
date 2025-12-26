@@ -194,8 +194,6 @@ export default function QuotePage() {
     calculateEstimate();
     setSubmitted(true);
     
-    // Here you would typically send the data to your backend
-    console.log("Quote request:", formData);
   };
 
   const totalItems = Object.values(formData.items).reduce((a, b) => a + b, 0);
@@ -293,7 +291,6 @@ export default function QuotePage() {
 
                 if (response.ok) {
                   setSubmitted(true);
-                  console.log("Contact request saved successfully");
                 } else {
                   alert("Failed to save request. Please try again.");
                 }
@@ -330,7 +327,7 @@ export default function QuotePage() {
                     onChange={handleInputChange}
                     required
                     placeholder="+91 98765 43210"
-                    pattern="[0-9+ -]{10,15}"
+                    pattern="[0-9 +-]{10,15}"
                   />
                 </div>
 
@@ -830,7 +827,6 @@ export default function QuotePage() {
 
                 if (response.ok) {
                   setSubmitted(true);
-                  console.log("Quote request saved successfully");
                 } else {
                   alert("Failed to save quote request. Please try again.");
                 }
@@ -867,7 +863,7 @@ export default function QuotePage() {
                     onChange={handleInputChange}
                     required
                     placeholder="+91 98765 43210"
-                    pattern="[0-9+ -]{10,15}"
+                    pattern="[0-9 +-]{10,15}"
                   />
                 </div>
 

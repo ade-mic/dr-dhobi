@@ -10,12 +10,13 @@ export function PwaProvider() {
     const register = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-        console.log("Service Worker registered:", registration);
         
         // Request notification permission if not already granted
         if ("Notification" in window && Notification.permission === "default") {
           const permission = await Notification.requestPermission();
-          console.log("Notification permission:", permission);
+          if (permission !== "granted") {
+            return;
+          }
         }
       } catch (error) {
         console.error("Service worker registration failed", error);

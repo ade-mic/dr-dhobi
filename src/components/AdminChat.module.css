@@ -1,11 +1,75 @@
 .container {
   display: flex;
-  height: calc(100vh - 250px);
-  min-height: 500px;
+  flex-direction: column;
+  height: calc(100vh - 200px);
+  min-height: 600px;
   background: #fff;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Stats Row */
+.statsRow {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  background: linear-gradient(135deg, #1e8ba5 0%, #167a8d 100%);
+  flex-wrap: wrap;
+}
+
+.statCard {
+  flex: 1;
+  min-width: 100px;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 12px 16px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  backdrop-filter: blur(5px);
+  transition: all 0.2s;
+}
+
+.statCard:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.statNumber {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.statLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}
+
+.openStat {
+  border-left: 3px solid #22c55e;
+}
+
+.pendingStat {
+  border-left: 3px solid #f59e0b;
+}
+
+.resolvedStat {
+  border-left: 3px solid #3b82f6;
+}
+
+.closedStat {
+  border-left: 3px solid #6b7280;
+}
+
+/* Main Content - Sidebar + Chat */
+.mainContent {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
 }
 
 /* Sidebar */
@@ -42,22 +106,39 @@
 
 .filterTabs {
   display: flex;
+  flex-direction: column;
   gap: 4px;
   padding: 12px;
-  overflow-x: auto;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .filterTab {
-  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
   border: none;
   background: transparent;
-  border-radius: 20px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
   color: #6b7280;
   transition: all 0.2s;
+  text-align: left;
+}
+
+.filterTab svg {
+  font-size: 16px;
+}
+
+.filterCount {
+  margin-left: auto;
+  background: #e5e7eb;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .filterTab:hover {
@@ -66,6 +147,11 @@
 
 .filterTab.active {
   background: #3b82f6;
+  color: white;
+}
+
+.filterTab.active .filterCount {
+  background: rgba(255, 255, 255, 0.25);
   color: white;
 }
 
@@ -436,29 +522,100 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+  .statsRow {
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .statCard {
+    min-width: 80px;
+    padding: 10px 12px;
+  }
+
+  .statNumber {
+    font-size: 20px;
+  }
+
+  .statLabel {
+    font-size: 10px;
+  }
+}
+
 @media (max-width: 768px) {
   .container {
+    height: calc(100vh - 180px);
+  }
+
+  .statsRow {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .statCard {
+    flex: 0 1 calc(33% - 8px);
+  }
+
+  .mainContent {
     flex-direction: column;
-    height: calc(100vh - 200px);
   }
 
   .sidebar {
     width: 100%;
-    max-height: 300px;
+    max-height: 350px;
     border-right: none;
     border-bottom: 1px solid #e5e7eb;
+  }
+
+  .filterTabs {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .filterTab {
+    flex: 1;
+    min-width: fit-content;
+    padding: 8px 10px;
+    font-size: 11px;
+    justify-content: center;
+  }
+
+  .filterTab svg {
+    display: none;
+  }
+
+  .filterCount {
+    padding: 1px 6px;
+    font-size: 10px;
   }
 
   .message {
     max-width: 85%;
   }
 
-  .filterTabs {
+  .chatArea {
+    height: calc(100vh - 550px);
+    min-height: 300px;
+  }
+}
+
+@media (max-width: 480px) {
+  .statsRow {
+    gap: 6px;
+    padding: 10px;
+  }
+
+  .statCard {
+    flex: 0 1 calc(50% - 6px);
     padding: 8px;
   }
 
+  .statNumber {
+    font-size: 18px;
+  }
+
   .filterTab {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 6px 8px;
   }
 }

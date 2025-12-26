@@ -1,38 +1,39 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, increment, where } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "./AuthProvider";
 import type { Conversation, ChatMessage } from "@/types/chat";
 import styles from "./AdminChat.module.css";
-import { MdSend, MdPerson, MdCircle, MdCheck, MdRefresh } from "react-icons/md";
+import { MdSend, MdPerson, MdCheck, MdOpenInNew, MdPending, MdCheckCircle, MdCancel } from "react-icons/md";
+
+type StatusFilter = "all" | "open" | "pending" | "resolved" | "closed";
+type StatusCounts = Record<StatusFilter, number>;
 
 export function AdminChatPanel() {
   const { user, userProfile } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [allConversations, setAllConversations] = useState<Conversation[]>([]);
   const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
-  const [filter, setFilter] = useState<"all" | "open" | "pending" | "resolved" | "closed">("all");
+  const [filter, setFilter] = useState<StatusFilter>("all");
+  const [statusCounts, setStatusCounts] = useState<StatusCounts>({
+    all: 0,
+    open: 0,
+    pending: 0,
+    resolved: 0,
+    closed: 0,
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Listen for all conversations
+  // Listen for all conversations (no index needed - filter client-side)
   useEffect(() => {
-    let q;
-    
-    if (filter === "all") {
-      q = query(
-        collection(db, "conversations"),
-        orderBy("lastMessageAt", "desc")
-      );
-    } else {
-      q = query(
-        collection(db, "conversations"),
-        where("status", "==", filter),
-        orderBy("lastMessageAt", "desc")
-      );
-    }
+    const q = query(
+      collection(db, "conversations"),
+      orderBy("lastMessageAt", "desc")
+    );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const convs = snapshot.docs.map((doc) => ({
@@ -40,7 +41,24 @@ export function AdminChatPanel() {
         ...doc.data(),
       })) as Conversation[];
       
-      setConversations(convs);
+      setAllConversations(convs);
+      
+      // Calculate status counts
+      const counts: StatusCounts = {
+        all: convs.length,
+        open: convs.filter(c => c.status === "open").length,
+        pending: convs.filter(c => c.status === "pending").length,
+        resolved: convs.filter(c => c.status === "resolved").length,
+        closed: convs.filter(c => c.status === "closed").length,
+      };
+      setStatusCounts(counts);
+      
+      // Apply client-side filter
+      if (filter === "all") {
+        setConversations(convs);
+      } else {
+        setConversations(convs.filter(c => c.status === filter));
+      }
     });
 
     return () => unsubscribe();
@@ -182,34 +200,82 @@ export function AdminChatPanel() {
   };
 
   const getTotalUnread = () => {
-    return conversations.reduce((acc, conv) => acc + (conv.unreadByAdmin || 0), 0);
+    return allConversations.reduce((acc, conv) => acc + (conv.unreadByAdmin || 0), 0);
+  };
+
+  const getStatusIcon = (status: StatusFilter) => {
+    switch (status) {
+      case "open": return <MdOpenInNew />;
+      case "pending": return <MdPending />;
+      case "resolved": return <MdCheckCircle />;
+      case "closed": return <MdCancel />;
+      default: return null;
+    }
+  };
+
+  const getStatusLabel = (status: StatusFilter) => {
+    const labels: Record<StatusFilter, string> = {
+      all: "All",
+      open: "Open",
+      pending: "Pending",
+      resolved: "Resolved",
+      closed: "Closed",
+    };
+    return labels[status];
   };
 
   return (
     <div className={styles.container}>
-      {/* Conversation List */}
-      <div className={styles.sidebar}>
-        <div className={styles.sidebarHeader}>
-          <h3>Support Chats</h3>
-          {getTotalUnread() > 0 && (
-            <span className={styles.unreadBadge}>{getTotalUnread()}</span>
-          )}
+      {/* Stats Cards */}
+      <div className={styles.statsRow}>
+        <div className={styles.statCard}>
+          <span className={styles.statNumber}>{statusCounts.all}</span>
+          <span className={styles.statLabel}>Total Chats</span>
         </div>
-
-        <div className={styles.filterTabs}>
-          {(["all", "open", "pending", "resolved", "closed"] as const).map((f) => (
-            <button
-              key={f}
-              className={`${styles.filterTab} ${filter === f ? styles.active : ""}`}
-              onClick={() => setFilter(f)}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
+        <div className={`${styles.statCard} ${styles.openStat}`}>
+          <span className={styles.statNumber}>{statusCounts.open}</span>
+          <span className={styles.statLabel}>Open</span>
         </div>
+        <div className={`${styles.statCard} ${styles.pendingStat}`}>
+          <span className={styles.statNumber}>{statusCounts.pending}</span>
+          <span className={styles.statLabel}>Pending</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.resolvedStat}`}>
+          <span className={styles.statNumber}>{statusCounts.resolved}</span>
+          <span className={styles.statLabel}>Resolved</span>
+        </div>
+        <div className={`${styles.statCard} ${styles.closedStat}`}>
+          <span className={styles.statNumber}>{statusCounts.closed}</span>
+          <span className={styles.statLabel}>Closed</span>
+        </div>
+      </div>
 
-        <div className={styles.conversationList}>
-          {conversations.length === 0 ? (
+      <div className={styles.mainContent}>
+        {/* Conversation List */}
+        <div className={styles.sidebar}>
+          <div className={styles.sidebarHeader}>
+            <h3>Support Chats</h3>
+            {getTotalUnread() > 0 && (
+              <span className={styles.unreadBadge}>{getTotalUnread()}</span>
+            )}
+          </div>
+
+          <div className={styles.filterTabs}>
+            {(["all", "open", "pending", "resolved", "closed"] as const).map((f) => (
+              <button
+                key={f}
+                className={`${styles.filterTab} ${filter === f ? styles.active : ""}`}
+                onClick={() => setFilter(f)}
+              >
+                {getStatusIcon(f)}
+                {getStatusLabel(f)}
+                <span className={styles.filterCount}>{statusCounts[f]}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.conversationList}>
+            {conversations.length === 0 ? (
             <div className={styles.emptyList}>
               <MdPerson />
               <p>No conversations</p>
@@ -334,6 +400,7 @@ export function AdminChatPanel() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   );

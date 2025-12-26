@@ -7,8 +7,8 @@ import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthProvider";
 import { ChatWidget } from "@/components/ChatWidget";
 import { NotificationBell } from "@/components/NotificationBell";
-import { collection, query, where, orderBy, onSnapshot } from "firebase/firestore";
-import { MdLogout, MdPerson, MdReceipt, MdRequestQuote, MdHome, MdSettings, MdChat } from "react-icons/md";
+import { collection, query, where, orderBy, onSnapshot, doc, deleteDoc } from "firebase/firestore";
+import { MdLogout, MdPerson, MdReceipt, MdRequestQuote, MdHome, MdSettings, MdChat, MdDelete } from "react-icons/md";
 import styles from "./page.module.css";
 import Image from "next/image";
 
@@ -47,6 +47,8 @@ export default function UserDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [quotes, setQuotes] = useState<QuoteRequest[]>([]);
   const [activeTab, setActiveTab] = useState<"bookings" | "quotes">("bookings");
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "booking" | "quote"; id: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Handle authentication and role-based redirects
   useEffect(() => {
@@ -112,6 +114,34 @@ export default function UserDashboard() {
       router.push("/login");
     } catch (error) {
       console.error("Error signing out:", error);
+    }
+  };
+
+  const handleDeleteBooking = async (id: string) => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, "bookings", id));
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error("Error deleting booking:", error);
+      alert("Failed to delete booking. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDeleteQuote = async (id: string) => {
+    if (!user) return;
+    setDeleting(true);
+    try {
+      await deleteDoc(doc(db, "quoteRequests", id));
+      setDeleteConfirm(null);
+    } catch (error) {
+      console.error("Error deleting quote:", error);
+      alert("Failed to delete quote request. Please try again.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -223,12 +253,21 @@ export default function UserDashboard() {
                 <div key={booking.id} className={styles.card}>
                   <div className={styles.cardHeader}>
                     <h3>{booking.service}</h3>
-                    <span
-                      className={styles.statusBadge}
-                      style={{ background: getStatusColor(booking.status) }}
-                    >
-                      {booking.status}
-                    </span>
+                    <div className={styles.cardActions}>
+                      <span
+                        className={styles.statusBadge}
+                        style={{ background: getStatusColor(booking.status) }}
+                      >
+                        {booking.status}
+                      </span>
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={() => setDeleteConfirm({ type: "booking", id: booking.id })}
+                        title="Delete booking"
+                      >
+                        <MdDelete />
+                      </button>
+                    </div>
                   </div>
                   <div className={styles.cardBody}>
                     <p><strong>Date:</strong> {new Date(booking.date).toLocaleDateString("en-IN")}</p>
@@ -262,12 +301,21 @@ export default function UserDashboard() {
                 <div key={quote.id} className={styles.card}>
                   <div className={styles.cardHeader}>
                     <h3>{quote.serviceType.replace('-', ' ')}</h3>
-                    <span
-                      className={styles.statusBadge}
-                      style={{ background: getStatusColor(quote.status) }}
-                    >
-                      {quote.status}
-                    </span>
+                    <div className={styles.cardActions}>
+                      <span
+                        className={styles.statusBadge}
+                        style={{ background: getStatusColor(quote.status) }}
+                      >
+                        {quote.status}
+                      </span>
+                      <button
+                        className={styles.deleteBtn}
+                        onClick={() => setDeleteConfirm({ type: "quote", id: quote.id })}
+                        title="Delete quote request"
+                      >
+                        <MdDelete />
+                      </button>
+                    </div>
                   </div>
                   <div className={styles.cardBody}>
                     <p className={styles.estimatedCost}>
@@ -294,6 +342,41 @@ export default function UserDashboard() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className={styles.modalOverlay} onClick={() => !deleting && setDeleteConfirm(null)}>
+          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+            <h3>Confirm Delete</h3>
+            <p>
+              Are you sure you want to delete this {deleteConfirm.type === "booking" ? "booking" : "quote request"}? 
+              This action cannot be undone.
+            </p>
+            <div className={styles.modalActions}>
+              <button
+                className={styles.cancelBtn}
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </button>
+              <button
+                className={styles.confirmDeleteBtn}
+                onClick={() => {
+                  if (deleteConfirm.type === "booking") {
+                    handleDeleteBooking(deleteConfirm.id);
+                  } else {
+                    handleDeleteQuote(deleteConfirm.id);
+                  }
+                }}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

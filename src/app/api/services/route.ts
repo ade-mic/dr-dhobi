@@ -132,13 +132,11 @@ export async function GET() {
       snapshot = await getDocs(q);
     } catch (indexError) {
       // If orderBy fails (missing index), fetch without ordering
-      console.log("Fetching without order, index may be missing:", indexError);
       snapshot = await getDocs(servicesRef);
     }
 
     if (snapshot.empty) {
       // Initialize with default services if none exist
-      console.log("No services found, initializing with defaults...");
       for (const service of defaultServices) {
         await setDoc(doc(db, "services", service.id), service);
       }
